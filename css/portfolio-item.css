@@ -13,13 +13,3 @@ footer {
 * {box-sizing:border-box}
 
 
-.carousel-indicators li {
-	background-color: black;
-	width: 16px;
-  	height: 16px;
-  	margin: 3px;
-}
-
-.carousel-indicators .active {
-    background-color: #333; /* or another highlight color */
-}
