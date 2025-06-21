@@ -180,6 +180,21 @@
     <script src="js\jquery-1.10.2.js"></script>
     <script src="js\bootstrap.js"></script>
 
+    <!-- Optional: Pause video on slide -->
+<script>
+  $(document).ready(function () {
+    $('#projectCarousel').carousel();
+
+    $('#projectCarousel').on('slide.bs.carousel', function () {
+      var $iframe = $(this).find('iframe');
+      $iframe.each(function () {
+        var src = $(this).attr('src');
+        $(this).attr('src', src);
+      });
+    });
+  });
+</script>
+
   </body>
 
 </html>
