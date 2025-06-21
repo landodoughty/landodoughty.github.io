@@ -13,6 +13,28 @@
 
     <!-- Custom CSS for the '3 Col Portfolio' Template -->
     <link href="../../css/portfolio-item.css" rel="stylesheet">
+
+    <style>
+      .carousel-inner > .item {
+        height: 0;
+        padding-bottom: 56.25%; /* 16:9 aspect ratio */
+        position: relative;
+      }
+    
+      .carousel-inner > .item > img,
+      .carousel-inner > .item > .embed-responsive {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%;
+        height: 100%;
+      }
+    
+      /* Prevent image distortion */
+      .carousel-inner > .item > img {
+        object-fit: cover;
+      }
+    </style>
+
   </head>
 
   <body>
