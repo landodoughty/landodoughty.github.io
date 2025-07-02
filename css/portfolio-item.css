@@ -15,3 +15,11 @@ footer {
 img {
 	border: 0;
   }
+
+.carousel-inner > .item > img,
+.carousel-inner > .item > video {
+  width: 100%;
+  height: auto; /* or auto */
+  object-fit: contain;
+  margin: auto;
+}
