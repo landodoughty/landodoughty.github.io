@@ -16,10 +16,9 @@ img {
 	border: 0;
   }
 
-.carousel-inner > .item > img,
-.carousel-inner > .item > video {
-  width: 100%;
-  height: auto; /* or auto */
-  object-fit: contain;
-  margin: auto;
-}
+  .carousel-inner img {
+	width: 100%;
+	height: 500px;
+	object-fit: contain;
+	background-color: #f8f8f8; /* subtle backdrop if needed */
+  }
