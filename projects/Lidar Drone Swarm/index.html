@@ -3,11 +3,11 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="VTOL Medical Delivery Drone - A vertical take-off and landing drone designed for rapid medical supply delivery in rural environments.">
-    <meta name="keywords" content="VTOL drone, medical delivery, rural healthcare, drone design, UAV, vertical take-off and landing, remote delivery, drone engineering">
+    <meta name="description" content="Lidar Drone Swarm - A swarm of drones equipped with Lidar sensors for collaborative mapping and inspection of large structures or buildings.">
+    <meta name="keywords" content="lidar drone swarm, collaborative mapping, drone inspection, UAV swarm technology, lidar sensors, large structure mapping, autonomous drones, drone fleet">
     <meta name="author" content="Landon Doughty">
 
-    <title>VTOL Drone - Landon Doughty</title>
+    <title>Lidar Drone Swarm - Landon Doughty</title>
 
     <!-- Bootstrap core CSS -->
     <link href="../../css/bootstrap.css" rel="stylesheet">
@@ -52,7 +52,7 @@
       <div class="row">
 
         <div class="col-lg-12">
-          <h1 class="page-header">VTOL Medical Delivery Drone <small>Drone Project</small></h1>
+          <h1 class="page-header">Lidar Drone Swarm <small>Java Programming Project</small></h1>
         </div>
 
       </div>
@@ -66,17 +66,22 @@
             <div class="carousel-inner">
               <!-- Image Slide -->
               <div class="item active">
-                <img src="images/CADwireframe.png" class="img-responsive" alt="CAD wireframe">
+                <img src="images/CAD.png" class="img-responsive" alt="CAD Model">
               </div>
         
               <!-- Image Slide -->
               <div class="item">
-                <img src="images/sim.png" class="img-responsive" alt="simulation results">
+                <img src="images/SCAN.png" class="img-responsive" alt="Lidar Scan">
               </div>
 
               <!-- Image Slide -->
               <div class="item">
-                <img src="images/real.png" class="img-responsive" alt="Constructed Drone">
+                <img src="images/Mapping.png" class="img-responsive" alt="Camera Mapping on Lidar Point Cloud">
+              </div>
+
+              <!-- Image Slide -->
+              <div class="item">
+                <img src="images/Flight.png" class="img-responsive" alt="drone flight test">
               </div>
         
             </div>
@@ -94,13 +99,16 @@
           <!-- Custom Image Indicators (below) -->
           <div class="carousel-custom-indicators text-center">
             <a data-target="#projectCarousel" data-slide-to="0" class="active">
-              <img src="images/CADwireframe.png" class="img-thumbnail" style="width: 100px;",style="height: 60px;">
+              <img src="images/CAD.png" class="img-thumbnail" style="width: 100px;",style="height: 60px;">
             </a>
             <a data-target="#projectCarousel" data-slide-to="1">
-              <img src="images/sim.png" class="img-thumbnail" style="width: 100px;",style="height: 60px;">
+              <img src="images/SCAN.png" class="img-thumbnail" style="width: 100px;",style="height: 60px;">
             </a>
             <a data-target="#projectCarousel" data-slide-to="2">
-              <img src="images/real.png" class="img-thumbnail" style="width: 100px;",style="height: 60px;">
+              <img src="images/Mapping.png" class="img-thumbnail" style="width: 100px;",style="height: 60px;">
+            </a>
+             <a data-target="#projectCarousel" data-slide-to="3">
+              <img src="images/Flight.png" class="img-thumbnail" style="width: 100px;",style="height: 60px;">
             </a>
             
           </div>
@@ -108,19 +116,30 @@
 
         <div class="col-md-4">
           <h3>Project Description</h3>
-          <p>This is a VTOL(vertical take-off and landing) drone that I helped make as a part of a small team. The drone was a hybrid, combining a traditional quadcopter and a fixed wing drone into one body. The drone is able to carry heavy medical payloads for use in rural areas which lack ambulances nearby. The drone can automonomously travel to a GPS location when requested by an app, bringing medical tools such as AEDs, Narcan, or a tourniquet.</p>
+          <p>This is a swarm of drones that I helped build as a part of a small team. The drones have on board lidar and digitial and IR cameras for mapping structures of buildings for inspection purposes. The drones communicate with each other using a local wifi network to ensure no collisions and are able to combine their mappings for efficient scanning of large structures.</p>
           <h3>Project Details</h3>
           <ul>
-            <li>Hybrid drone allows vertical take off and landing near a patient in need.</li>
-            <li>Autonomously fly from a central location to a GPS location as requested by an app.</li>
-            <li>Fly at up to 26m/s whilst carrying a 1.5kg payload in a 10 mile range. </li>
-            <li>Custom flight controller based on the Teensy 3.6 and BNO055.</li>
-            <li>ISEF 2024: Robotics and Intelligent Machines 2nd Place</li>
+            <li>Swarm of quadcopters autonomously navigate and create lidar and camera scans of structures. </li>
+            <li>FAST-LIO SLAM algorithm used for localization in unison with a frontier exploration scheme.</li>
+            <li>Custom flight controller(see related project) used for flight control with RP-CM5 for compute, lidar, and camera.</li>
+            <li>Avoids collisions using MIT's MADER to reroute trajectories if needed.</li>
+            <li>Combines lidar point clouds and camera scans from different angles into one large scan.</li>
           </ul>
           <h3>Links</h3>
-          <div class="row text-center">
-            
-          </div>
+          <!-- <div class="row text-center">
+            <div class="col-xs-6 col-sm-3">
+              <a href="https://github.com/landodoughty/Circuit-Simulator/tree/main" target="_blank" style="color: black;">
+                <i class="fa fa-github fa-2x" style="margin-bottom:5px;"></i>
+                <p>GitHub</p>
+              </a>
+            </div>
+            <div class="col-xs-6 col-sm-3">
+              <a href="https://youtu.be/FtBQfRbzuTs" target="_blank" style="color: black;">
+                <i class="fa fa-youtube-play fa-2x" style="margin-bottom:5px;"></i>
+                <p>Examples</p>
+              </a>
+            </div>
+          </div> -->
           
           
           
