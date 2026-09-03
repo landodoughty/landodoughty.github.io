@@ -1,9 +1,9 @@
-body {
-    padding-top: 70px;
-  }
-  
-  .about-section {
-    margin-top: 40px;
+.about-section {
+    margin-top: 20px;
+    padding-bottom: 30px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #eee;
+    scroll-margin-top: 70px;
   }
   
   .profile-img {
