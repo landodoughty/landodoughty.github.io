@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500">
+  <rect width="800" height="500" fill="#1a2332"/>
+  <polyline fill="none" stroke="#5ec8c8" stroke-width="3" points="40,250 90,250 110,180 140,320 170,250 220,250 250,140 290,360 330,250 400,250 430,190 470,310 510,250 580,250 610,160 650,340 690,250 760,250"/>
+  <circle cx="400" cy="250" r="70" fill="none" stroke="#8fd9d9" stroke-width="2"/>
+  <text x="400" y="430" text-anchor="middle" fill="#e8f4f4" font-family="Segoe UI, Arial, sans-serif" font-size="28">Compact Neural Interface</text>
+</svg>
