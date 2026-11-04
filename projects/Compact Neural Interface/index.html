@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Compact Neural Interface - AA compact, low power, PCB stack designed to capture and process biosignals using an FPGA and UWB transcranial data transmission.">
-    <meta name="keywords" content="neural interface, EEG, biosignals, embedded systems, PCB, Landon Doughty">
+    <meta name="description" content="Compact Neural Interface - A compact, low power PCB stack that streams 512 neural recording channels through a Lattice ECP5 FPGA to USB 3.0 and a UWB transcranial data link.">
+    <meta name="keywords" content="neural interface, 512 channel, ECP5, FPGA, Verilog, FT600, USB 3.0, UWB, biosignals, PCB, KiCad, Landon Doughty">
     <meta name="author" content="Landon Doughty">
 
     <title>Compact Neural Interface - Landon Doughty</title>
@@ -12,6 +12,12 @@
     <link href="../../css/bootstrap.css" rel="stylesheet">
     <link href="../../css/portfolio-item.css" rel="stylesheet">
     <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <style>
+      .writeup h4 { margin-top: 25px; }
+      .writeup pre { font-size: 12px; background-color: #f8f8f8; }
+      .writeup .table { font-size: 14px; }
+      .spec-table td:first-child { font-weight: bold; white-space: nowrap; }
+    </style>
   </head>
 
   <body>
@@ -41,7 +47,7 @@
 
       <div class="row">
         <div class="col-lg-12">
-          <h1 class="page-header">Compact Neural Interface <small>FPGA+RFIC Project</small></h1>
+          <h1 class="page-header">Compact Neural Interface <small>FPGA + UWB Project</small></h1>
         </div>
       </div>
 
@@ -51,16 +57,16 @@
           <div id="projectCarousel" class="carousel slide" data-interval = false data-wrap = false>
             <div class="carousel-inner">
               <div class="item active">
-                <img src="images/FPGA_Front.png" class="img-responsive" alt="">
+                <img src="images/FPGA_Front.png" class="img-responsive" alt="FPGA board, front">
               </div>
               <div class="item">
-                <img src="images/FPGA_Stack.png" class="img-responsive" alt="">
+                <img src="images/FPGA_STACK.png" class="img-responsive" alt="Board stack">
               </div>
               <div class="item">
-                <img src="images/FPGA_Back.png" class="img-responsive" alt="">
+                <img src="images/FPGA_back.png" class="img-responsive" alt="FPGA board, back">
               </div>
               <div class="item">
-                <img src="images/FPGA_Schematic.png" class="img-responsive" alt="">
+                <img src="images/FPGA_Schematic.png" class="img-responsive" alt="FPGA board schematic">
               </div>
             </div>
             <a class="left carousel-control" href="#projectCarousel" role="button" data-slide="prev">
@@ -74,37 +80,138 @@
           </div>
           <div class="carousel-custom-indicators text-center">
             <a data-target="#projectCarousel" data-slide-to="0" class="active">
-              <img src="images/FPGA_Front.png" class="img-thumbnail" style="width: 100px;" style="height: 60px;">
+              <img src="images/FPGA_Front.png" class="img-thumbnail" style="width: 100px; height: 60px;">
             </a>
             <a data-target="#projectCarousel" data-slide-to="1">
-              <img src="images/FPGA_Stack.png" class="img-thumbnail" style="width: 100px;" style="height: 60px;">
+              <img src="images/FPGA_STACK.png" class="img-thumbnail" style="width: 100px; height: 60px;">
             </a>
             <a data-target="#projectCarousel" data-slide-to="2">
-              <img src="images/FPGA_Back.png" class="img-thumbnail" style="width: 100px;" style="height: 60px;">
+              <img src="images/FPGA_back.png" class="img-thumbnail" style="width: 100px; height: 60px;">
             </a>
             <a data-target="#projectCarousel" data-slide-to="3">
-              <img src="images/FPGA_Schematic.png" class="img-thumbnail" style="width: 100px;" style="height: 60px;">
+              <img src="images/FPGA_Schematic.png" class="img-thumbnail" style="width: 100px; height: 60px;">
             </a>
           </div>
         </div>
 
         <div class="col-md-4">
           <h3>Project Summary</h3>
-          <p>A compact, low power, PCB stack designed to capture and process biosignals using an FPGA and UWB transcranial data transmission.</p>
+          <p>A compact, low power PCB stack that captures 512 channels of neural data from a custom recording chip, processes and frames it on a Lattice ECP5 FPGA, and sends it out over USB 3.0 or a UWB link for transcranial data transmission.</p>
           <h3>Project Details</h3>
           <ul>
-            <li>Compact custom PCB stack</li>
-            <li>Biosignal acquisition and onboard processing.</li>
-            <li>Low-power embedded firmware for portable operation.</li>
-            <li>More photos, schematics, and write-up coming soon.</li>
+            <li>512 channels sampled at 15,625 Hz each (12-bit).</li>
+            <li>Lattice ECP5 FPGA (LFE5U-25F) with custom Verilog gateware.</li>
+            <li>16.5 MB/s sustained streaming over USB 3.0 (FTDI FT600).</li>
+            <li>Framed serial output with CRC-12 for the UWB transmitter.</li>
+            <li>On-FPGA SPI chip configuration and stimulation control.</li>
+            <li>6-layer KiCad boards, shrunk from 62 &times; 50 mm to 26 &times; 18 mm.</li>
+            <li>Battery powered with on-board Li-Po charging and ultra-low-noise LDOs.</li>
+            <li>C host daemon and live 512-channel Python scope.</li>
           </ul>
+          <h3>Links</h3>
+          <div class="row text-center">
+            <div class="col-sm-6 col-xs-6">
+              <a href="https://github.com/landodoughty/FPGABoard" target="_blank" style="color: black;">
+                <i class="fa fa-github fa-2x" style="margin-bottom:5px;"></i>
+                <p>FPGABoard<br><small>Hardware (KiCad)</small></p>
+              </a>
+            </div>
+            <div class="col-sm-6 col-xs-6">
+              <a href="https://github.com/BLegrand881/FPGA_512" target="_blank" style="color: black;">
+                <i class="fa fa-github fa-2x" style="margin-bottom:5px;"></i>
+                <p>FPGA_512<br><small>Gateware + Host Software</small></p>
+              </a>
+            </div>
+          </div>
         </div>
 
       </div>
-      <div class="row">
+
+      <div class="row writeup">
+        <div class="col-lg-12">
         <h3>Project Description</h3>
-        <p>This project is a work in progress. Write-up coming soon.</p>
+        <p>The Compact Neural Interface is the digital backbone for a 512-channel neural recording chip. The chip puts out eight serial data lines, each carrying 64 amplifiers (electrodes). This project includes the FPGA hardware that receives those lines, the Verilog that turns them into framed and error-checked packets, and the host software that records the data and plots it live. The long-term goal is a small, battery-powered stack that sits on the head and sends data through the skull over ultra-wideband (UWB) radio. The USB 3.0 path is the high-bandwidth link we use for development and validation.</p>
+        <p>I built this with Ben LeGrand. Both of us worked across the board hardware (<a href="https://github.com/landodoughty/FPGABoard" target="_blank">FPGABoard</a>) and the gateware and host tools (<a href="https://github.com/BLegrand881/FPGA_512" target="_blank">FPGA_512</a>).</p>
+
+        <h4>System Architecture</h4>
+<pre>
+ADC / neural chip ──8 serial lines + 32 MHz clock──► ECP5 FPGA ──USB 3.0 (FT600)──► host PC
+                                                         │
+   deserialize → 4 framed lanes → arbiter → USB framer → 64 KB async FIFO → FT600
+                                                         ├──► UWB serial framer (32 Mbit/s) → UWB chip
+                                                         ├──► SPI programmer → chip configuration
+                                                         └──► stimulation controller
+</pre>
+        <p>The FPGA deserializes the eight bit-interleaved ADC streams. It pairs them into four lanes and packs each lane into a 132-word frame: a sync word, a lane ID, a frame counter, 128 data words and a CRC-12. The four lanes are interleaved into one USB stream and buffered through a block-RAM elastic FIFO into the FT600 USB 3.0 bridge. The same frames are mirrored onto a serial output for the UWB transmitter.</p>
+
+        <h4>Key Numbers</h4>
+        <table class="table table-condensed table-striped spec-table">
+          <tbody>
+            <tr><td>Channels</td><td>512 (8 data lines &times; 64 amplifiers)</td></tr>
+            <tr><td>Sample rate</td><td>15,625 Hz per channel (one full 512-channel "slice" every 64 &micro;s)</td></tr>
+            <tr><td>Resolution</td><td>12-bit ADC, stored as 16-bit signed PCM</td></tr>
+            <tr><td>Input range</td><td>&plusmn;15.36 mV input-referred (4.5776 &micro;V per count)</td></tr>
+            <tr><td>USB throughput</td><td>16.5 MB/s sustained over USB 3.0</td></tr>
+            <tr><td>UWB serial link</td><td>32 Mbit/s line rate carrying a ~24.75 Mbit/s payload</td></tr>
+            <tr><td>Frame format</td><td>132 &times; 12-bit words (128 data), 4 lanes</td></tr>
+            <tr><td>Error detection</td><td>CRC-12 (ITU-T, poly 0x80F), lane-ID complement check, frame sequence counter</td></tr>
+            <tr><td>FPGA</td><td>Lattice LFE5U-25F-7BG256I (ECP5, 25k LUTs, BGA-256)</td></tr>
+            <tr><td>Toolchain</td><td>Open source: Yosys &rarr; nextpnr-ecp5 &rarr; ecppack (oss-cad-suite)</td></tr>
+          </tbody>
+        </table>
+
+        <h4>Hardware</h4>
+        <p>All boards were designed in KiCad on 6-layer stackups and connect to each other through fine-pitch Hirose DF40C board-to-board connectors (0.4 mm pitch), so the whole system stacks vertically.</p>
+        <ul>
+          <li><b>FPGA Board (V1), 62 &times; 50 mm:</b> the first full development board. It has the ECP5 FPGA, an FTDI FT600 USB 3.0 FIFO bridge on USB-C, an MX25R6435F SPI configuration flash, a 16 MHz oscillator, a TPS62095 buck converter and TPS7A8101 low-noise LDOs for the 3.3 / 2.5 / 2.0 / 1.5 / 1.1 V rails, a JTAG header, a UWB header and a DF40C connector to the ADC board. An RP2040 running DirtyJTAG was added later so the FPGA could be programmed over USB without a dedicated programmer.</li>
+          <li><b>FPGA Mini (V2), 26.3 &times; 18.3 mm:</b> the miniaturized version, about 84% smaller than V1 by area. To free up space, the USB interface moved to a separate breakout board. V2 adds a battery-powered power system: an MCP73831 Li-Po charger, TPS2120/TPS2121 power-path multiplexers, RP509Z buck converters, LT3045 ultra-low-noise LDOs for the sensitive analog rails, and TPS7A20 LDOs for the 2.5 / 2.0 / 1.5 / 1.1 / 1.0 / 0.8 V rails. It also has a 64 MHz SiT8008 MEMS oscillator with a CDCBT1001 clock buffer, 74AVC level translators to the neural and UWB chips, ESD protection, coaxial RF connectors, and a footprint for the custom UWB chip.</li>
+          <li><b>LDO Board (V2), 45.8 &times; 53.7 mm:</b> a power board built around a bank of LT3042 ultra-low-noise linear regulators. It powers the neural recording chip, where supply noise feeds straight into the microvolt-level signals.</li>
+          <li><b>V2 Programmer / USB Adapter:</b> a breakout that carries the FT600 USB 3.0 bridge, USB-C and the JTAG header for the Mini board, so the head-worn stack doesn't need them.</li>
+          <li><b>Connector Adapter (13 &times; 15 mm)</b> and an <b>A7 shield</b> board: these adapt the DF40C connectors and link the boards to the existing chip carrier and ECP5 evaluation hardware during bring-up.</li>
+        </ul>
+
+        <h4>FPGA Gateware</h4>
+        <ul>
+          <li><b>ADC deserializer with auto-adjust:</b> each serial line sends 64-cycle groups with a run of leading zeros, followed by four bit-interleaved 12-bit samples sent LSB first. The <code>adc_auto_adjust</code> module captures the whole group and detects whether the data starts after 11, 12 or 13 leading zeros. It then pulls the samples from the right offset, so the receiver stays aligned even when the chip's timing shifts.</li>
+          <li><b>Lane framing:</b> <code>pair_tdm_framer</code> time-multiplexes channel pairs into four lanes, and <code>usb_framer</code> builds 132-word frames. Each frame has a DC-balanced sync word that is unique to its lane, a lane ID with a complement check, a 12-bit frame counter, and a CRC-12 that also covers the header. The chance of the receiver locking onto the wrong position is about 9 &times; 10<sup>-10</sup>.</li>
+          <li><b>USB streaming:</b> <code>lane_frame_arbiter</code> round-robins the lanes into one stream. A 64 KB block-RAM elastic FIFO absorbs host-side stalls, and <code>ft600_writer</code> drives the FT600 245-mode FIFO interface with confirmed-acceptance gating, so no word is ever written twice or skipped.</li>
+          <li><b>UWB serial output:</b> <code>serial_framer</code> mirrors the same framed data onto a serial line for the UWB transmitter, sending it as it arrives rather than buffering whole frames. Separate bring-up designs use the ECP5 PLL to multiply 16 MHz up to 64 MHz and drive the UWB chip's 4-bit parallel input header.</li>
+          <li><b>SPI chip programmer:</b> <code>spi_programmer</code> stores up to 4,096 bits per channel of left/right SPI configuration data in block RAM. The host loads it over USB, and the module shifts it out at 500 kHz followed by a latch pulse. This replaced an earlier bit-banged SPI setup that ran from a DAQ device.</li>
+          <li><b>Stimulation controller:</b> one host command starts a complete stimulation sequence of 1&ndash;255 pulses. A 32 kHz tick handles all timing: amplifier reset, stimulation enable and clock, a 4 ms period per pulse with a 1 ms pulse. Recording keeps streaming throughout.</li>
+          <li><b>Host command channel:</b> the host can reset the chip, pulse or hold the front-end reset, switch in a ramp test pattern and start SPI or stimulation sequences, all without interrupting the data stream.</li>
+        </ul>
+
+        <h4>Host Software</h4>
+        <ul>
+          <li><b><code>adc_daemon</code> (C):</b> owns the FT600. A USB reader thread fills a 256 MB ring buffer, and a decoder thread checks every frame's sync, lane ID, sequence number and CRC. It builds 512-channel slices and handles WAV recording of any subset of channels. It also serves a Unix-socket API, and its <code>--file</code> replay mode lets frontend work happen without hardware.</li>
+          <li><b><code>adc_live.py</code>:</b> a real-time 8-panel scope (one panel per data line) with a command terminal. It uses peak-detect (min/max) decimation so fast signals show their true envelope instead of aliasing. A "single" mode freezes the view on full-rate data around the dominant frequency.</li>
+          <li><b>Diagnostics:</b> <code>adc_ctl</code> for one-shot commands, <code>stats</code> for per-lane frame/CRC/sequence/drop counters, and async <code>!drops</code>, <code>!crc</code> and <code>!seq</code> events, so a lost sample is never silent. Tools for pattern checking, throughput benchmarks, raw capture and drop reproduction round this out.</li>
+          <li><b>Simulation:</b> Icarus Verilog testbenches with ADC models and waveform-comparison scripts, plus an end-to-end test that replays recorded HDF5 sine data through a pattern generator.</li>
+        </ul>
+
+        <h4>Engineering Challenges</h4>
+        <ul>
+          <li><b>Stale FIFO reads at the USB interface:</b> early FT600 tests dropped or duplicated one word about every 2,048 words, right at the FT600's 4 KB buffer boundary. The cause was that the FIFO read pointer and the output data register updated on the same clock edge. A "safe" fix of waiting one cycle after each write cut throughput to 0.028 MB/s. The final writer keeps data intact at full rate by only advancing the FIFO on a confirmed accept.</li>
+          <li><b>Clock-domain-crossing duplicates:</b> the async FIFO between the 32 MHz ADC domain and the USB clock domain was rebuilt on block RAM with an output buffer. This removed duplicated words at the crossing.</li>
+          <li><b>Sample drops under host load:</b> a 64 KB elastic FIFO now absorbs USB pauses from the host. The lane ID carries a drop counter, so any FPGA-side overflow is reported instead of silently corrupting data.</li>
+          <li><b>Toolchain quirk:</b> Yosys' <code>opt -undriven</code> pass removed the DP16KD block-RAM cells the FIFOs depend on. Synthesis is now split around that pass.</li>
+          <li><b>Miniaturization:</b> fitting the FPGA, power-path, charging, low-noise analog supplies, clocking and three board-to-board connectors onto a 26 &times; 18 mm, 6-layer board.</li>
+        </ul>
+
+        <h4>Timeline</h4>
+        <ul>
+          <li><b>June 2026:</b> V1 FPGA board design review, power-plane work and first Gerbers. The 32 MHz PLL design ran on hardware, and miniaturization work began.</li>
+          <li><b>July 2026:</b> RP2040 DirtyJTAG programming, battery management, and FT600 USB streaming. The full ADC-to-USB pipeline was verified on all 8 data lines across 4 framed lanes, with a continuous receiver, live UI, UWB serial mirror, SPI programmer and stimulation controller.</li>
+          <li><b>August 2026:</b> FPGA Mini (V2) layout and routing, the USB programmer adapter, the LDO Board V2, and UWB chip programming over SPI.</li>
+          <li><b>September 2026:</b> a frontend development kit with a recorded capture for hardware-free development, and full documentation.</li>
+          <li><b>October 2026:</b> power path, clock buffer and board-to-board connectors added to the FPGA Mini.</li>
+        </ul>
+
+        <h4>Status</h4>
+        <p>The full 512-channel acquisition pipeline runs on hardware: ADC to FPGA to USB 3.0 to the live scope, with CRC-checked frames and drop reporting. The FPGA Mini (V2) and its supporting boards are in layout. Current work is finishing the miniaturized stack and bringing up the UWB transmission path.</p>
+        </div>
       </div>
+
       <div class="row">
 
         <div class="col-lg-12">
@@ -112,7 +219,7 @@
         </div>
 
         <div class="col-sm-3 col-xs-6">
-        	<a href="..\Rocketry Avionics\index.html"><img class="img-responsive portfolio-item" src="..\Rocketry Avionics\images\cover.svg"></a>
+        	<a href="..\Rocketry Avionics\index.html"><img class="img-responsive portfolio-item" src="..\Rocketry Avionics\images\MIA_FRONT.png"></a>
           <h3><a href="..\Rocketry Avionics\index.html">Rocketry Avionics</a></h3>
         </div>
 
@@ -141,7 +248,7 @@
         <div class="row">
           <div class="col-lg-12">
             <p>Copyright &copy; Landon Doughty <span id="getCurrentDate"></span>
-            <br> Published September 2, 2026 </p>
+            <br> Published September 2, 2026 &middot; Updated November 4, 2026 </p>
           </div>
         </div>
       </footer>
