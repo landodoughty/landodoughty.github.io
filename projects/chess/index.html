@@ -20,6 +20,12 @@
 
   
 
+    <style>
+      .writeup h4 { margin-top: 25px; }
+      .writeup pre { font-size: 12px; background-color: #f8f8f8; }
+      .writeup .table { font-size: 14px; }
+      .spec-table td:first-child { font-weight: bold; white-space: nowrap; }
+    </style>
   </head>
 
   <body>
@@ -122,36 +128,48 @@
         </div>
 
         <div class="col-md-4">
-          <h3>Project Description</h3>
-          <p>This is a autonomous, robotic chess board that I created with two friends. The board is able to detect player's mnoves using only hall effect sensors and magnets inside the pieces. To read the 64 hall effect sensors, 4 16-channel analog multiplexers were used, reducing the required pins to only 8. The detected move is then fed into an on-board Orange Pi 5 running a custom chess engine. Finally, the engine's move is played using a 4 string tension system under the board.(Think NFL flying camera). This system moves an electromagnet, which seamlessly guides any piece above the board with no visible movement.</p>
+          <h3>Project Summary</h3>
+          <p>An autonomous robotic chess board that senses your moves and moves its own pieces with a hidden electromagnet.</p>
           <h3>Project Details</h3>
           <ul>
             <li>Detects player moves using an 8x8 array of linear hall effect sensors on a custom PCB</li>
             <li>On board computer calculates the best response at user-specified level up to 2400 ELO</li>
-            <li>Electromagnet moved by 4 string tension system driven by 4 NEMA17 stepper motors </li>
+            <li>Electromagnet moved by 4 string tension system driven by 4 NEMA17 stepper motors</li>
             <li>ISEF 2023: Robotics and Intelligent Machines 2nd Place | CIA Special Award First Place</li>
           </ul>
           <h3>Links</h3>
           <div class="row text-center">
-            <!-- <div class="col-xs-6 col-sm-3">
+            <div class="col-sm-6 col-xs-6">
               <a href="https://github.com/landodoughty/Circuit-Simulator/tree/main" target="_blank" style="color: black;">
                 <i class="fa fa-github fa-2x" style="margin-bottom:5px;"></i>
                 <p>GitHub</p>
               </a>
-            </div> -->
-            <div class="col-xs-6 col-sm-3">
+            </div>
+            <div class="col-sm-6 col-xs-6">
               <a href="https://youtu.be/6moVBtkj90gs" target="_blank" style="color: black;">
                 <i class="fa fa-youtube-play fa-2x" style="margin-bottom:5px;"></i>
                 <p>Motion Demo</p>
               </a>
             </div>
           </div>
-          
-          
-          
-          
         </div>
 
+      </div>
+
+      <div class="row writeup">
+        <div class="col-lg-12">
+        <h3>Project Description</h3>
+        <h4>Overview</h4>
+          <p>This is an autonomous robotic chess board I built with two friends. It detects your moves, works out a response with an on-board chess engine, and then moves its own piece across the board with no visible mechanism.</p>
+        <h4>Move Detection</h4>
+          <p>Each piece has a magnet inside. A custom PCB with an 8 &times; 8 array of linear hall-effect sensors detects where the pieces are. Four 16-channel analog multiplexers read all 64 sensors using only 8 pins.</p>
+        <h4>Chess Engine</h4>
+          <p>The detected move goes to an on-board Orange Pi 5 running a custom chess engine. You can set its difficulty up to about 2400 ELO.</p>
+        <h4>Piece Movement</h4>
+          <p>An electromagnet under the board plays the engine's move. Four strings driven by four NEMA 17 stepper motors pull it into position, much like the flying cameras used at NFL games, and it guides the piece from below.</p>
+        <h4>Recognition</h4>
+          <p><b>ISEF 2023:</b> 2nd Place, Robotics and Intelligent Machines, and the CIA Special Award (1st Place).</p>
+        </div>
       </div>
 
       <div class="row">
@@ -192,7 +210,7 @@
         <div class="row">
           <div class="col-lg-12">
             <p>Copyright &copy; Landon Doughty <span id="getCurrentDate"></span>
-            <br> Published September 28, 2025 </p>
+            <br> Published September 28, 2025 &middot; Updated November 4, 2026 </p>
           </div>
         </div>
       </footer>

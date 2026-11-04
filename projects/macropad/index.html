@@ -20,6 +20,12 @@
 
   
 
+    <style>
+      .writeup h4 { margin-top: 25px; }
+      .writeup pre { font-size: 12px; background-color: #f8f8f8; }
+      .writeup .table { font-size: 14px; }
+      .spec-table td:first-child { font-weight: bold; white-space: nowrap; }
+    </style>
   </head>
 
   <body>
@@ -103,19 +109,19 @@
           <!-- Custom Image Indicators (below) -->
           <div class="carousel-custom-indicators text-center">
             <a data-target="#projectCarousel" data-slide-to="0" class="active">
-              <img src="images/CAD.png" class="img-thumbnail" style="width: 100px;" style="height: 60px;">
+              <img src="images/CAD.png" class="img-thumbnail" style="width: 100px; height: 60px;">
             </a>
             <a data-target="#projectCarousel" data-slide-to="1">
-              <img src="images/MacroPad.jpg" class="img-thumbnail" style="width: 100px;" style="height: 60px;">
+              <img src="images/MacroPad.jpg" class="img-thumbnail" style="width: 100px; height: 60px;">
             </a>
             <a data-target="#projectCarousel" data-slide-to="2">
-              <img src="images/PCBSchematic.png" class="img-thumbnail" style="width: 100px;" style="height: 60px;">
+              <img src="images/PCBSchematic.png" class="img-thumbnail" style="width: 100px; height: 60px;">
             </a>
             <a data-target="#projectCarousel" data-slide-to="3">
-              <img src="images/PCBModel.png" class="img-thumbnail" style="width: 100px;" style="height: 60px;">
+              <img src="images/PCBModel.png" class="img-thumbnail" style="width: 100px; height: 60px;">
             </a>
             <a data-target="#projectCarousel" data-slide-to="4">
-              <img src="images/PCBDesign.png" class="img-thumbnail" style="width: 100px;" style="height: 60px;">
+              <img src="images/PCBDesign.png" class="img-thumbnail" style="width: 100px; height: 60px;">
             </a>
 
             
@@ -123,43 +129,54 @@
         </div>
 
         <div class="col-md-4">
-          <h3>Project Description</h3>
-          <p>This custom 20-key macro pad is powered by the RP2040 microcontroller and designed for maximum versatility. Each key is fully programmable, allowing for custom shortcuts, macros, or media controls across Windows, macOS, and Linux. The pad features a custom PCB, USB connectivity, and optional per-key RGB lighting, making it ideal for productivity, creative workflows, or gaming.</p>
+          <h3>Project Summary</h3>
+          <p>A 20-key programmable macro pad on a custom RP2040 PCB, with hot-swap switches and per-key RGB.</p>
           <h3>Project Details</h3>
           <ul>
             <li>Programmable keys allow shortcuts, macros, or controls to be customized.</li>
-            <li>Hotswappable MX switches allows you to customize your typing feel.</li>
-            <li>RGB Backlighting allows per-key lighting using WS2812/NeoPixel LEDs</li>
-            <li>MacroPad runs on a custom RP2040 PCB designed in Kicad.</li>
+            <li>Hot-swappable MX switches allows you to customize your typing feel.</li>
+            <li>RGB backlighting allows per-key lighting using WS2812/NeoPixel LEDs</li>
+            <li>MacroPad runs on a custom RP2040 PCB designed in KiCad.</li>
             <li>Custom 3d printed case provides a sleek, ergonomic look.</li>
           </ul>
           <h3>Links</h3>
           <div class="row text-center">
-            <div class="col-xs-6 col-sm-3">
+            <div class="col-sm-4 col-xs-4">
               <a href="https://github.com/landodoughty/MacroPad" target="_blank" style="color: black;">
                 <i class="fa fa-github fa-2x" style="margin-bottom:5px;"></i>
                 <p>GitHub</p>
               </a>
             </div>
-            <div class="col-xs-6 col-sm-3">
+            <div class="col-sm-4 col-xs-4">
               <a href="https://www.youtube.com/watch?v=PqRKv3RLDjU" target="_blank" style="color: black;">
                 <i class="fa fa-youtube-play fa-2x" style="margin-bottom:5px;"></i>
                 <p>Guide</p>
               </a>
             </div>
-            <div class="col-xs-6 col-sm-3">
+            <div class="col-sm-4 col-xs-4">
               <a href="https://www.printables.com/model/1348331-custom-macro-pad-5x4" target="_blank" style="color: black;">
                 <i class="fa fa-cube fa-2x" style="margin-bottom:5px;"></i>
                 <p>3d Models</p>
               </a>
             </div>
           </div>
-          
-          
-          
-          
         </div>
 
+      </div>
+
+      <div class="row writeup">
+        <div class="col-lg-12">
+        <h3>Project Description</h3>
+        <h4>Overview</h4>
+          <p>This 20-key macro pad runs on the RP2040 microcontroller. Every key is fully programmable for shortcuts, macros or media controls, and it works on Windows, macOS and Linux. It's useful for productivity, creative work and gaming.</p>
+        <h4>Hardware</h4>
+          <ul>
+            <li>Custom RP2040 PCB designed in KiCad, connected over USB.</li>
+            <li>Hot-swap sockets for MX-style switches, so you can change the typing feel without soldering.</li>
+            <li>Optional per-key RGB lighting with WS2812/NeoPixel LEDs.</li>
+            <li>Custom 3D-printed case, with models free on Printables.</li>
+          </ul>
+        </div>
       </div>
 
       <div class="row">
@@ -201,7 +218,7 @@
         <div class="row">
           <div class="col-lg-12">
             <p>Copyright &copy; Landon Doughty <span id="getCurrentDate"></span>
-            <br> Published July 2, 2025 </p>
+            <br> Published July 2, 2025 &middot; Updated November 4, 2026 </p>
           </div>
         </div>
       </footer>

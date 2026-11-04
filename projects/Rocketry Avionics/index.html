@@ -12,6 +12,12 @@
     <link href="../../css/bootstrap.css" rel="stylesheet">
     <link href="../../css/portfolio-item.css" rel="stylesheet">
     <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <style>
+      .writeup h4 { margin-top: 25px; }
+      .writeup pre { font-size: 12px; background-color: #f8f8f8; }
+      .writeup .table { font-size: 14px; }
+      .spec-table td:first-child { font-weight: bold; white-space: nowrap; }
+    </style>
   </head>
 
   <body>
@@ -75,36 +81,40 @@
           </div>
           <div class="carousel-custom-indicators text-center">
             <a data-target="#projectCarousel" data-slide-to="0" class="active">
-              <img src="images/MIA_FRONT.png" class="img-thumbnail" style="width: 100px;" style="height: 60px;">
+              <img src="images/MIA_FRONT.png" class="img-thumbnail" style="width: 100px; height: 60px;">
             </a>
             <a data-target="#projectCarousel" data-slide-to="1">
-              <img src="images/MIA_BACK.png" class="img-thumbnail" style="width: 100px;" style="height: 60px;">
+              <img src="images/MIA_BACK.png" class="img-thumbnail" style="width: 100px; height: 60px;">
             </a>
             <a data-target="#projectCarousel" data-slide-to="2">
-              <img src="images/AFS_3d.png" class="img-thumbnail" style="width: 100px;" style="height: 60px;">
+              <img src="images/AFS_3d.png" class="img-thumbnail" style="width: 100px; height: 60px;">
             </a>
           </div>
         </div>
 
         <div class="col-md-4">
           <h3>Project Summary</h3>
-          <p>Custom Avionics for Amateur Rocketry. Flight computers with sensing, data logging, telemetry, motor control, and ignition capabilities.</p>
+          <p>Custom avionics for amateur rocketry: RP2350-based flight computers with sensing, data logging, LoRa telemetry, servo and motor control, and pyrotechnic ignition, plus a ground station to track and command them.</p>
           <h3>Project Details</h3>
           <ul>
-            <li>A family of custom flight computer PCBs and firmware.</li>
-            <li>Based on the RP2350 family of microcontrollers.</li>
-            <li>Built in 9 axis motion, GPS, and barometric sensing.</li>
-            <li>Motor control and ignition capabilities.</li>
+            <li>Two flight computers: the Rice ECLIPSE AFS board and my own M.I.A. (Mission Independent Avionics).</li>
+            <li>RP2350B microcontroller with 16 MB QSPI flash and microSD logging.</li>
+            <li>Sensors: 6-axis IMU, &plusmn;64 g accelerometer, magnetometer, barometer, temperature and power monitoring.</li>
+            <li>USB-C or XT30 battery input with automatic power-path switching.</li>
+            <li>8 buffered PWM outputs for servos and motor control.</li>
+            <li>M.I.A. adds 4 ignition channels with continuity sensing and u-blox GPS.</li>
+            <li>915 MHz LoRa telemetry with a desktop ground station.</li>
+            <li>Pico SDK C++ sensor drivers with automated bench tests.</li>
           </ul>
           <h3>Links</h3>
           <div class="row text-center">
-            <div class="col-sm-3 col-sm-3">
+            <div class="col-sm-6 col-xs-6">
               <a href="https://github.com/landodoughty/Mission-Independent-Avionics-M.I.A.-" target="_blank" style="color: black;">
                 <i class="fa fa-github fa-2x" style="margin-bottom:5px;"></i>
                 <p>M.I.A.</p>
               </a>
             </div>
-            <div class="col-sm-3 col-sm-3">
+            <div class="col-sm-6 col-xs-6">
               <a href="https://github.com/rice-eclipse/AFSElec" target="_blank" style="color: black;">
                 <i class="fa fa-github fa-2x" style="margin-bottom:5px;"></i>
                 <p>ECLIPSE AFS</p>
@@ -114,10 +124,60 @@
         </div>
 
       </div>
-      <div class="row">
+
+      <div class="row writeup">
+        <div class="col-lg-12">
         <h3>Project Description</h3>
-        <p>This project is a work in progress. Write-up coming soon.</p>
+        <h4>Overview</h4>
+          <p>Rocketry Avionics is a family of flight computers built around the Raspberry Pi RP2350B. The two boards share one core design: microcontroller, power system, sensor suite, storage and PWM outputs. <b>ECLIPSE AFS</b> is the flight computer for Rice ECLIPSE, and <b>M.I.A.</b> (Mission Independent Avionics) is my personal board. M.I.A. adds GPS, pyrotechnic ignition and telemetry so it can fly any mission on its own. Both are 4-layer boards designed in KiCad and are set up for JLCPCB assembly with LCSC part numbers.</p>
+        <h4>Shared Core Hardware</h4>
+          <table class="table table-condensed table-striped spec-table">
+          <tbody>
+            <tr><td>Microcontroller</td><td>Raspberry Pi RP2350B (QFN-80) with a 12 MHz crystal</td></tr>
+            <tr><td>Storage</td><td>W25Q128 16 MB QSPI flash, microSD card slot</td></tr>
+            <tr><td>IMU</td><td>TDK ICM-45686 6-axis accelerometer and gyroscope</td></tr>
+            <tr><td>High-g accel</td><td>Kionix KX134, &plusmn;64 g, for high-acceleration flight phases</td></tr>
+            <tr><td>Magnetometer</td><td>MEMSIC MMC5983MA</td></tr>
+            <tr><td>Barometer</td><td>TE MS5611 for altitude</td></tr>
+            <tr><td>Temperature</td><td>TI TMP117 precision temperature sensor</td></tr>
+            <tr><td>Power monitor</td><td>TI INA219 with a 2 m&Omega; shunt for battery voltage and current</td></tr>
+            <tr><td>Power</td><td>USB-C and XT30 battery inputs, two TPS2121 power multiplexers, two AP62150 buck converters, AP2112K 3.3 V LDO</td></tr>
+            <tr><td>Outputs</td><td>8 PWM servo/motor headers driven through a 74AHCT541 buffer</td></tr>
+            <tr><td>Expansion</td><td>JST-PH connectors for SPI, I2C and UART peripherals; test points for bring-up</td></tr>
+          </tbody>
+        </table>
+        <h4>ECLIPSE AFS</h4>
+          <p>AFS is the flight computer for Rice ECLIPSE, the university's rocketry team. In the first version, team members each designed and tested one sensor circuit on its own (IMU, barometer, magnetometer, accelerometer, temperature and power sensing, plus the TPS2121 power path), then merged them into one main board. I led Version 2, a 50.8 &times; 87 mm 4-layer board that combines everything into one layout. It adds test points, LCSC part numbers and Gerbers ready for manufacturing. I also wrote the Pico SDK sensor drivers the team now uses.</p>
+        <h4>M.I.A. (Mission Independent Avionics)</h4>
+          <p>M.I.A. starts from the same core and adds everything needed to run a flight without other electronics:</p>
+          <ul>
+            <li><b>Pyrotechnic ignition:</b> 4 ignition channels, each switched by an AO3400A MOSFET, with a fuse, a zener clamp and a screw terminal. A high-impedance divider on each channel senses e-match continuity before launch.</li>
+            <li><b>GPS:</b> a u-blox MAX-M10S GNSS receiver on its own 3.3 V rail, with an SMA antenna connector.</li>
+            <li><b>Telemetry:</b> SPI telemetry connectors for a LoRa radio module.</li>
+            <li><b>Status:</b> WS2812B RGB LEDs and indicator LEDs.</li>
+            <li><b>Layout:</b> first routed on 6 layers, then converted to 4 layers, with impedance-controlled traces.</li>
+          </ul>
+        <h4>Firmware</h4>
+          <p>The firmware uses the Pico SDK in C++. I wrote a self-contained driver library for each sensor, and all of them share the same pattern: a constructor that stores pins and settings, <code>begin()</code> to reset the chip and check its ID, setters that work at any time, and reads that return an error on bus failure. Each SPI driver sets its own baud rate and mode on every transaction, so sensors with different speed limits can share a bus with the SD card. The I2C drivers use timeouts, so a missing device can't hang the bus.</p>
+          <p>Every driver comes with a bench test that runs at boot. It checks that the chip responds and that settings read back correctly. It also checks that readings are physically plausible (about 1 g at rest, Earth's magnetic field, room temperature and pressure), and exercises the data-ready and interrupt pins, FIFOs, and continuous and non-blocking modes. At the end it prints a pass/fail summary table.</p>
+          <table class="table table-condensed table-striped spec-table">
+            <tbody>
+              <tr><td>ICM45686</td><td>6-axis IMU &middot; SPI &middot; g, deg/s, &deg;C</td></tr>
+              <tr><td>KX134</td><td>&plusmn;64 g accelerometer &middot; SPI &middot; g</td></tr>
+              <tr><td>MMC5983MA</td><td>Magnetometer &middot; SPI &middot; Gauss, &deg;C</td></tr>
+              <tr><td>MS5611</td><td>Barometer &middot; SPI &middot; mbar, &deg;C, m</td></tr>
+              <tr><td>TMP117</td><td>Temperature &middot; I2C &middot; &deg;C</td></tr>
+              <tr><td>INA219</td><td>Current/power monitor &middot; I2C &middot; V, mA, mW</td></tr>
+            </tbody>
+          </table>
+        <h4>Telemetry and Ground Station</h4>
+          <p>M.I.A. sends telemetry over a 915 MHz LoRa link (RFM95). The flight software runs a state machine: <i>Idle &rarr; Armed &rarr; Powered Ascent &rarr; Coasting &rarr; Descent &rarr; Recovery</i>. On the pad, the link is two-way: the rocket sends at 1 Hz and listens for commands. Once it launches, the radio switches to transmit-only and sends packets as fast as it can. Each packet carries position, velocity, acceleration, pitch/roll/yaw, altitude, temperature and the current flight state.</p>
+          <p>A Pico-based ground station receives the packets and logs them to an SD card. A desktop app built with Dear PyGui shows the data live, along with link RSSI and SNR. It also has ARM/DISARM controls, and its LAUNCH/RESET buttons are interlocked so they only work in the correct radio mode.</p>
+        <h4>Status</h4>
+          <p>The ECLIPSE AFS V2 board is ready for manufacturing, and its sensor drivers and bench tests are merged into the team firmware. The M.I.A. PCB is finished, and its firmware is moving from Arduino to the Pico SDK so it can share the same driver libraries.</p>
+        </div>
       </div>
+
       <div class="row">
 
         <div class="col-lg-12">
@@ -154,7 +214,7 @@
         <div class="row">
           <div class="col-lg-12">
             <p>Copyright &copy; Landon Doughty <span id="getCurrentDate"></span>
-            <br> Published September 2, 2026 </p>
+            <br> Published September 2, 2026 &middot; Updated November 4, 2026 </p>
           </div>
         </div>
       </footer>

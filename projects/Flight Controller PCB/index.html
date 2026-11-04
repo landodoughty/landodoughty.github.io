@@ -20,6 +20,12 @@
 
   
 
+    <style>
+      .writeup h4 { margin-top: 25px; }
+      .writeup pre { font-size: 12px; background-color: #f8f8f8; }
+      .writeup .table { font-size: 14px; }
+      .spec-table td:first-child { font-weight: bold; white-space: nowrap; }
+    </style>
   </head>
 
   <body>
@@ -114,8 +120,8 @@
         </div>
 
         <div class="col-md-4">
-          <h3>Project Description</h3>
-          <p>This is a custom flight controller PCB I designed and built based on the STM32F1 chip. The PCB houses a BNO055 absolute orientation sensor to allow the flight controller to know its orientation in space, and breakout connections for the ESC, a downwards lidar for altitude control, a gimbal for camera/sensor control, a small OLED screen, and any other I2C connection.
+          <h3>Project Summary</h3>
+          <p>A custom STM32F1 flight controller PCB with absolute orientation sensing and breakouts for common drone peripherals.</p>
           <h3>Project Details</h3>
           <ul>
             <li>Based on an STM32F1 Chip with a BNO055 absolute orientation sensor for steady flight.</li>
@@ -125,25 +131,37 @@
           </ul>
           <h3>Links</h3>
           <div class="row text-center">
-            <div class="col-xs-6 col-sm-3">
+            <div class="col-sm-6 col-xs-6">
               <a href="https://github.com/landodoughty/Flight-Controller" target="_blank" style="color: black;">
                 <i class="fa fa-github fa-2x" style="margin-bottom:5px;"></i>
                 <p>GitHub</p>
               </a>
             </div>
-            <!-- <div class="col-xs-6 col-sm-3">
+            <div class="col-sm-6 col-xs-6">
               <a href="https://youtu.be/FtBQfRbzuTs" target="_blank" style="color: black;">
                 <i class="fa fa-youtube-play fa-2x" style="margin-bottom:5px;"></i>
                 <p>Examples</p>
               </a>
-            </div> -->
+            </div>
           </div>
-          
-          
-          
-          
         </div>
 
+      </div>
+
+      <div class="row writeup">
+        <div class="col-lg-12">
+        <h3>Project Description</h3>
+        <h4>Overview</h4>
+          <p>This is a custom flight controller PCB I designed and built around the STM32F1 microcontroller. A BNO055 absolute orientation sensor tells the controller its orientation in space, so the drone can hold steady flight.</p>
+        <h4>Hardware</h4>
+          <ul>
+            <li>STM32F1 microcontroller, programmed over SWD.</li>
+            <li>BNO055 absolute orientation sensor.</li>
+            <li>Breakout connections for ESCs, a downward-facing lidar for altitude hold, a camera/sensor gimbal, a small OLED screen and other I2C devices.</li>
+            <li>Fits the standard 30.5 &times; 30.5 mm flight-stack mounting pattern.</li>
+          </ul>
+          <p>This flight controller also flies the drones in the <a href="../Lidar Drone Swarm/index.html">Lidar Drone Swarm</a> project.</p>
+        </div>
       </div>
 
       <div class="row">
@@ -184,7 +202,7 @@
         <div class="row">
           <div class="col-lg-12">
             <p>Copyright &copy; Landon Doughty <span id="getCurrentDate"></span>
-            <br> Published June 21, 2025 </p>
+            <br> Published June 21, 2025 &middot; Updated November 4, 2026 </p>
           </div>
         </div>
       </footer>

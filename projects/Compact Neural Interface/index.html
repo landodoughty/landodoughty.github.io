@@ -198,15 +198,6 @@ ADC / neural chip ──8 serial lines + 32 MHz clock──► ECP5 FPGA ──U
           <li><b>Miniaturization:</b> fitting the FPGA, power-path, charging, low-noise analog supplies, clocking and three board-to-board connectors onto a 26 &times; 18 mm, 6-layer board.</li>
         </ul>
 
-        <h4>Timeline</h4>
-        <ul>
-          <li><b>June 2026:</b> V1 FPGA board design review, power-plane work and first Gerbers. The 32 MHz PLL design ran on hardware, and miniaturization work began.</li>
-          <li><b>July 2026:</b> RP2040 DirtyJTAG programming, battery management, and FT600 USB streaming. The full ADC-to-USB pipeline was verified on all 8 data lines across 4 framed lanes, with a continuous receiver, live UI, UWB serial mirror, SPI programmer and stimulation controller.</li>
-          <li><b>August 2026:</b> FPGA Mini (V2) layout and routing, the USB programmer adapter, the LDO Board V2, and UWB chip programming over SPI.</li>
-          <li><b>September 2026:</b> a frontend development kit with a recorded capture for hardware-free development, and full documentation.</li>
-          <li><b>October 2026:</b> power path, clock buffer and board-to-board connectors added to the FPGA Mini.</li>
-        </ul>
-
         <h4>Status</h4>
         <p>The full 512-channel acquisition pipeline runs on hardware: ADC to FPGA to USB 3.0 to the live scope, with CRC-checked frames and drop reporting. The FPGA Mini (V2) and its supporting boards are in layout. Current work is finishing the miniaturized stack and bringing up the UWB transmission path.</p>
         </div>

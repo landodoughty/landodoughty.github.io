@@ -20,6 +20,12 @@
 
   
 
+    <style>
+      .writeup h4 { margin-top: 25px; }
+      .writeup pre { font-size: 12px; background-color: #f8f8f8; }
+      .writeup .table { font-size: 14px; }
+      .spec-table td:first-child { font-weight: bold; white-space: nowrap; }
+    </style>
   </head>
 
   <body>
@@ -114,37 +120,50 @@
         </div>
 
         <div class="col-md-4">
-          <h3>Project Description</h3>
-          <p>This is a swarm of drones that I helped build as a part of a small team. The drones have on board lidar and digitial and IR cameras for mapping structures of buildings for inspection purposes. The drones communicate with each other using a local wifi network to ensure no collisions and are able to combine their mappings for efficient scanning of large structures.</p>
+          <h3>Project Summary</h3>
+          <p>A swarm of autonomous quadcopters that map buildings with lidar and cameras for structural inspection.</p>
           <h3>Project Details</h3>
           <ul>
-            <li>Swarm of quadcopters autonomously navigate and create lidar and camera scans of structures. </li>
+            <li>Swarm of quadcopters autonomously navigate and create lidar and camera scans of structures.</li>
             <li>FAST-LIO SLAM algorithm used for localization in unison with a frontier exploration scheme.</li>
             <li>Custom flight controller(see related project) used for flight control with RP-CM5 for compute, lidar, and camera.</li>
             <li>Avoids collisions using MIT's MADER to reroute trajectories if needed.</li>
             <li>Combines lidar point clouds and camera scans from different angles into one large scan.</li>
           </ul>
           <h3>Links</h3>
-          <!-- <div class="row text-center">
-            <div class="col-xs-6 col-sm-3">
+          <div class="row text-center">
+            <div class="col-sm-6 col-xs-6">
               <a href="https://github.com/landodoughty/Circuit-Simulator/tree/main" target="_blank" style="color: black;">
                 <i class="fa fa-github fa-2x" style="margin-bottom:5px;"></i>
                 <p>GitHub</p>
               </a>
             </div>
-            <div class="col-xs-6 col-sm-3">
+            <div class="col-sm-6 col-xs-6">
               <a href="https://youtu.be/FtBQfRbzuTs" target="_blank" style="color: black;">
                 <i class="fa fa-youtube-play fa-2x" style="margin-bottom:5px;"></i>
                 <p>Examples</p>
               </a>
             </div>
-          </div> -->
-          
-          
-          
-          
+          </div>
         </div>
 
+      </div>
+
+      <div class="row writeup">
+        <div class="col-lg-12">
+        <h3>Project Description</h3>
+        <h4>Overview</h4>
+          <p>This is a swarm of drones I helped build as part of a small team. Each drone carries a lidar and digital and IR cameras to map buildings for inspection. The drones talk to each other over a local Wi-Fi network to avoid collisions, and they combine their maps to scan large structures efficiently.</p>
+        <h4>Autonomy</h4>
+          <ul>
+            <li><b>Localization:</b> FAST-LIO lidar-inertial SLAM.</li>
+            <li><b>Exploration:</b> a frontier exploration scheme decides where each drone scans next.</li>
+            <li><b>Collision avoidance:</b> MIT's MADER planner reroutes trajectories between drones when needed.</li>
+            <li><b>Mapping:</b> lidar point clouds and camera scans from different angles are merged into one large scan.</li>
+          </ul>
+        <h4>Hardware</h4>
+          <p>Each drone flies on my <a href="../Flight Controller PCB/index.html">custom flight controller</a>, with an RP-CM5 handling compute, the lidar and the cameras.</p>
+        </div>
       </div>
 
       <div class="row">
@@ -185,7 +204,7 @@
         <div class="row">
           <div class="col-lg-12">
             <p>Copyright &copy; Landon Doughty <span id="getCurrentDate"></span>
-            <br> Published June 21, 2025 </p>
+            <br> Published June 21, 2025 &middot; Updated November 4, 2026 </p>
           </div>
         </div>
       </footer>
