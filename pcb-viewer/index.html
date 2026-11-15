@@ -1014,7 +1014,75 @@ function schLayerInfo(num, name) {
   return { num, name: name || (m ? m[0] : `Layer${num}`), color: m ? m[1] : (num >= 100 ? '#7a4f9a' : C.symbol), visible: true, alpha: 1 };
 }
 
-return { BOARD_LAYER_NAMES, KICAD_PCB_COLORS, boardLayerInfo, boardLayerOrder, mirrorLayer, isBottomLayer, SCH_COLORS, schLayerInfo };
+// ------------------------------------------------------------------ KiCad-named layer groups (viewer)
+// The viewer groups EAGLE layers into the KiCad layers they become on export, using KiCad's
+// user-facing names, default colors and Appearance-panel order.
+const KICAD_DISPLAY = {
+  'F.SilkS': 'F.Silkscreen', 'B.SilkS': 'B.Silkscreen', 'F.CrtYd': 'F.Courtyard', 'B.CrtYd': 'B.Courtyard',
+  'F.Adhes': 'F.Adhesive', 'B.Adhes': 'B.Adhesive', 'Dwgs.User': 'User.Drawings', 'Cmts.User': 'User.Comments',
+  'Eco1.User': 'User.Eco1', 'Eco2.User': 'User.Eco2',
+};
+const kicadDisplayName = (n) => KICAD_DISPLAY[n] || n;
+
+const KICAD_INNER_COLORS = ['#7fc87f', '#ce7d2c', '#4fcbcb', '#db628b', '#a7a5c6', '#28cccc', '#d6c93e', '#c87fc8', '#5c8f5c', '#9d5c2a', '#3d9696', '#a54c69', '#8584a6', '#aaa53c'];
+const KI_LAYER_STYLE = {
+  'F.Cu': ['#c83434'], 'B.Cu': ['#4d7fc4'],
+  'F.Adhesive': ['#840084', false], 'B.Adhesive': ['#0000c2', false],
+  'F.Paste': ['#b4a09a', false], 'B.Paste': ['#00c2c2', false],
+  'F.Silkscreen': ['#f2eda1'], 'B.Silkscreen': ['#e8b2a7'],
+  'F.Mask': ['#d864ff', false, 0.45], 'B.Mask': ['#02ffee', false, 0.45],
+  'User.Drawings': ['#c2c2c2'], 'User.Comments': ['#5994dc'], 'User.Eco1': ['#b4dbd2', false], 'User.Eco2': ['#d8c852', false],
+  'Edge.Cuts': ['#d0d2cd'], Margin: ['#ff26e2', false],
+  'F.Courtyard': ['#ff26e2', false], 'B.Courtyard': ['#26e9ff', false],
+  'F.Fab': ['#afafaf'], 'B.Fab': ['#585d84'],
+  Pads: ['#e3b72e'], Vias: ['#ececec'], Ratsnest: ['#f5f5f5', true, 0.6], 'Rule Areas': ['#c84040', false, 0.55],
+};
+const PANEL_ORDER = ['F.Cu', '#inner', 'B.Cu', 'F.Adhesive', 'B.Adhesive', 'F.Paste', 'B.Paste', 'F.Silkscreen', 'B.Silkscreen', 'F.Mask', 'B.Mask',
+  'User.Drawings', 'User.Comments', 'User.Eco1', 'User.Eco2', 'Edge.Cuts', 'Margin', 'F.Courtyard', 'B.Courtyard', 'F.Fab', 'B.Fab',
+  'Pads', 'Vias', 'Ratsnest', 'Rule Areas'];
+const innerNum = (k) => { const m = /^In(\d+)\.Cu$/.exec(k); return m ? +m[1] : 0; };
+
+function kicadLayerStyle(key) {
+  const n = innerNum(key);
+  if (n) return { color: KICAD_INNER_COLORS[(n - 1) % KICAD_INNER_COLORS.length], visible: true, alpha: 1 };
+  const s = KI_LAYER_STYLE[key] || ['#9a9a9a'];
+  return { color: s[0], visible: s[1] ?? true, alpha: s[2] ?? 1 };
+}
+
+/** Appearance-panel position (front first, like KiCad). */
+function kicadPanelIndex(key) {
+  const n = innerNum(key);
+  if (n) return 1 + n / 100;
+  const i = PANEL_ORDER.indexOf(key);
+  return i < 0 ? 99 : i;
+}
+
+const flipSide = (k) => (k.startsWith('F.') ? 'B.' + k.slice(2) : k.startsWith('B.') ? 'F.' + k.slice(2) : k);
+/** Back-to-front drawing order. */
+function kicadDrawOrder(key, flipped = false, nInner = 0) {
+  if (flipped) {
+    const n = innerNum(key);
+    if (n) return 100 + n;
+    key = flipSide(key);
+  } else {
+    const n = innerNum(key);
+    if (n) return 100 + (nInner + 1 - n);
+  }
+  const back = ['B.Fab', 'B.Courtyard', 'B.Adhesive', 'B.Paste', 'B.Mask', 'B.Silkscreen'];
+  const front = ['F.Mask', 'F.Paste', 'F.Adhesive', 'F.Fab', 'F.Silkscreen', 'F.Courtyard'];
+  if (back.includes(key)) return 10 + back.indexOf(key);
+  if (key === 'B.Cu') return 100;
+  if (key === 'F.Cu') return 120;
+  if (key === 'Pads') return 150;
+  if (key === 'Vias') return 151;
+  if (front.includes(key)) return 200 + front.indexOf(key);
+  if (key === 'Edge.Cuts') return 300;
+  if (key === 'Rule Areas') return 310;
+  if (key === 'Ratsnest') return 400;
+  return 250;
+}
+
+return { BOARD_LAYER_NAMES, KICAD_PCB_COLORS, boardLayerInfo, boardLayerOrder, mirrorLayer, isBottomLayer, SCH_COLORS, schLayerInfo, kicadDisplayName, kicadLayerStyle, kicadPanelIndex, kicadDrawOrder };
 })();
 
 __mods["js/eagle.js"] = (() => {
@@ -2070,213 +2138,6 @@ class View {
 return { TEXT_FONT, newBatch, addToBatch, View };
 })();
 
-__mods["js/scenes.js"] = (() => {
-// Builds drawable scenes (layer batches with KiCad-like colors) and hit testing for boards and schematic sheets.
-const { newBatch, addToBatch } = __mods["js/render.js"];
-const { boardLayerInfo, boardLayerOrder, KICAD_PCB_COLORS, SCH_COLORS, schLayerInfo } = __mods["js/layers.js"];
-const { padOutline } = __mods["js/eagle.js"];
-const { distToSeg, pointInPoly, BBox, textBox } = __mods["js/geom.js"];
-
-// ------------------------------------------------------------------ board
-function boardShapeKey(s) {
-  if (s.k === 'pad') return s.th ? 17 : s.layer;
-  if (s.k === 'via') return 18;
-  if (s.k === 'hole') return 17;
-  return s.layer;
-}
-
-function boardLayerList(B) {
-  const keys = new Set();
-  for (const s of B.shapes) keys.add(boardShapeKey(s));
-  keys.add(17); keys.add(18);
-  return [...keys].map((k) => {
-    const info = B.layers.get(k) || boardLayerInfo(k);
-    return { ...boardLayerInfo(k, info.name), key: k };
-  });
-}
-
-function buildBoardScene(B, state) {
-  const batches = new Map();
-  for (const s of B.shapes) {
-    const key = boardShapeKey(s);
-    let b = batches.get(key);
-    if (!b) { b = newBatch(); batches.set(key, b); }
-    addToBatch(b, s);
-  }
-  // copper pours: per layer, per net -> zone path + "cut" geometry of everything else
-  const pours = new Map();
-  const zoneShapes = B.shapes.filter((s) => s.zone && s.layer >= 1 && s.layer <= 16);
-  if (zoneShapes.length) {
-    const byLayer = new Map();
-    for (const z of zoneShapes) {
-      if (!byLayer.has(z.layer)) byLayer.set(z.layer, new Map());
-      const m = byLayer.get(z.layer);
-      if (!m.has(z.net)) m.set(z.net, []);
-      m.get(z.net).push(z);
-    }
-    const iso0 = B.dr.mdWireWire || 0.2;
-    for (const [layer, nets] of byLayer) {
-      const items = B.shapes.filter((s) => !s.zone && (s.layer === layer || s.k === 'via' || (s.k === 'pad' && s.th) || s.k === 'hole') && s.k !== 'text');
-      const list = [];
-      for (const [net, zones] of nets) {
-        if (zones.some((z) => z.src?.pour === 'cutout')) continue;
-        const zp = new Path2D();
-        for (const z of zones) { zp.moveTo(z.pts[0], z.pts[1]); for (let i = 2; i < z.pts.length; i += 2) zp.lineTo(z.pts[i], z.pts[i + 1]); zp.closePath(); }
-        const iso = Math.max(...zones.map((z) => (Number.isFinite(z.src?.isolate) && z.src.isolate > 0 ? z.src.isolate : iso0)));
-        const cut = newBatch();
-        for (const it of items) if (it.net !== net || it.k === 'hole') addToBatch(cut, it);
-        // other-net pours on this layer with better (lower) rank also take precedence
-        const rank = Math.min(...zones.map((z) => z.src?.rank || 1));
-        const others = [];
-        for (const [n2, z2] of nets) if (n2 !== net) for (const z of z2) if ((z.src?.rank || 1) < rank) others.push(z);
-        const op = new Path2D();
-        for (const z of others) { op.moveTo(z.pts[0], z.pts[1]); for (let i = 2; i < z.pts.length; i += 2) op.lineTo(z.pts[i], z.pts[i + 1]); op.closePath(); }
-        const width = Math.max(...zones.map((z) => z.w || 0));
-        list.push({ net, path: zp, cut, iso, others: others.length ? op : null, width });
-      }
-      if (list.length) pours.set(layer, list);
-    }
-  }
-  const list = boardLayerList(B);
-  const layers = list.map((L) => ({
-    key: L.key, name: L.name, color: state.colors?.get(L.key) || L.color, alpha: L.alpha,
-    visible: state.visible.has(L.key) ? state.visible.get(L.key) : L.visible,
-    batch: batches.get(L.key) || newBatch(), order: boardLayerOrder(L.key, state.flip), zoneAlpha: 0.32,
-    minLine: 1, pours: pours.get(L.key),
-  }));
-  if (state.activeLayer !== undefined) {
-    const al = layers.find((l) => l.key === state.activeLayer);
-    if (al) al.order = al.key >= 1 && al.key <= 16 ? 140 : 1000;
-    if (state.highContrast) for (const l of layers) if (l.key !== state.activeLayer && l.key !== 17 && l.key !== 18) l.dimmed = true;
-  }
-  layers.sort((a, b) => a.order - b.order);
-  return {
-    background: KICAD_PCB_COLORS.background, gridColor: '#3a4a5c', holeColor: '#0b1520', layers, bbox: B.bbox,
-    gridSteps: [0.0254, 0.05, 0.1, 0.127, 0.25, 0.5, 0.635, 1, 1.27, 2.54, 5, 10, 25.4, 50, 100],
-  };
-}
-
-function boardHit(B, x, y, scene, tol) {
-  const vis = new Set(scene.layers.filter((l) => l.visible).map((l) => l.key));
-  // pass 1: copper with nets (topmost first)
-  const order = new Map(scene.layers.map((l, i) => [l.key, i]));
-  let best = null, bestOrder = -1;
-  for (const s of B.shapes) {
-    const key = boardShapeKey(s);
-    if (!vis.has(key)) continue;
-    let hit = false;
-    switch (s.k) {
-      case 'pad': {
-        const o = padOutline(s);
-        hit = o.circle ? Math.hypot(x - o.circle[0], y - o.circle[1]) <= o.circle[2] + tol : pointInPoly(x, y, o.pts);
-        break;
-      }
-      case 'via': hit = Math.hypot(x - s.x, y - s.y) <= s.d / 2 + tol; break;
-      case 'seg': if (s.net) hit = distToSeg(x, y, s.x1, s.y1, s.x2, s.y2) <= s.w / 2 + tol; break;
-      case 'arc': if (s.net) { const d = Math.hypot(x - s.cx, y - s.cy); if (Math.abs(d - s.r) <= s.w / 2 + tol) { let a = Math.atan2(y - s.cy, x - s.cx); while (a < s.a0) a += 2 * Math.PI; hit = a <= s.a1; } } break;
-      case 'poly': if (s.zone) hit = pointInPoly(x, y, s.pts); break;
-      default: break;
-    }
-    if (!hit) continue;
-    let o = order.get(key) ?? 0;
-    if (s.k === 'poly') o -= 1000; // zones lowest priority
-    if (s.k === 'pad' || s.k === 'via') o += 1000;
-    if (o > bestOrder) { best = s; bestOrder = o; }
-  }
-  let comp = null;
-  for (const el of B.elements) {
-    const side = el.rot.mirror ? 16 : 1;
-    if (!vis.has(side) && !vis.has(el.rot.mirror ? 22 : 21) && !vis.has(17)) continue;
-    if (el.bbox.contains(x, y, tol)) if (!comp || el.bbox.area() < comp.bbox.area()) comp = el;
-  }
-  return { shape: best, element: best?.owner ? B.elements.find((e) => e.name === best.owner) : comp, comp };
-}
-
-// ------------------------------------------------------------------ schematic
-function schShapeKey(s) {
-  if (s.k === 'text') {
-    if (s.label) return 'labels';
-    if (s.layer === 'pinname' || s.layer === 'pinnum') return s.layer;
-    if (s.attr === 'NAME' || s.src === '>NAME') return 'refs';
-    if (s.attr === 'VALUE' || s.src === '>VALUE') return 'values';
-    if (s.layer === 95) return 'refs';
-    if (s.layer === 96) return 'values';
-    return s.inst || s.owner ? 'symtext' : `t${s.layer}`;
-  }
-  if (s.k === 'pinpt') return null;
-  return s.layer;
-}
-
-const SCH_KEY_INFO = {
-  labels: ['Net labels', SCH_COLORS.label], pinname: ['Pin names', SCH_COLORS.pinName], pinnum: ['Pin numbers', SCH_COLORS.pinNum],
-  refs: ['References', SCH_COLORS.reference], values: ['Values', SCH_COLORS.value], symtext: ['Symbol text', SCH_COLORS.field],
-};
-
-function schLayerList(S, sheet) {
-  const keys = new Set();
-  for (const s of sheet.shapes) { const k = schShapeKey(s); if (k !== null) keys.add(k); }
-  return [...keys].map((k) => {
-    if (SCH_KEY_INFO[k]) return { key: k, name: SCH_KEY_INFO[k][0], color: SCH_KEY_INFO[k][1], visible: true };
-    const num = typeof k === 'string' ? +k.slice(1) : k;
-    const info = schLayerInfo(num, S.layers.get(num)?.name);
-    return { key: k, name: (typeof k === 'string' ? 'Text: ' : '') + info.name, color: typeof k === 'string' && num === 94 ? SCH_COLORS.symbol : info.color, visible: true };
-  });
-}
-
-const SCH_ORDER = { 98: 0, 97: 1, 94: 2, 93: 3, 92: 4, 91: 5 };
-function buildSchScene(S, sheet, state) {
-  const batches = new Map();
-  for (const s of sheet.shapes) {
-    const key = schShapeKey(s);
-    if (key === null) continue;
-    let b = batches.get(key);
-    if (!b) { b = newBatch(); batches.set(key, b); }
-    addToBatch(b, s);
-  }
-  const layers = schLayerList(S, sheet).map((L) => ({
-    ...L, color: state.colors?.get(L.key) || L.color, visible: state.visible.has(L.key) ? state.visible.get(L.key) : L.visible,
-    batch: batches.get(L.key) || newBatch(), order: typeof L.key === 'number' ? (SCH_ORDER[L.key] ?? 2) : 10, minLine: 1,
-  }));
-  layers.sort((a, b) => a.order - b.order);
-  return { background: SCH_COLORS.background, gridColor: '#c9c6bb', layers, bbox: sheet.bbox, gridSteps: [0.635, 1.27, 2.54, 5.08, 12.7, 25.4, 50.8, 127, 254] };
-}
-
-function schHit(sheet, x, y, tol) {
-  let best = null;
-  for (const h of sheet.hits) {
-    if (h.kind === 'wire') {
-      const s = h.shape;
-      const d = s.k === 'seg' ? distToSeg(x, y, s.x1, s.y1, s.x2, s.y2) : Math.abs(Math.hypot(x - s.cx, y - s.cy) - s.r);
-      if (d <= Math.max(s.w / 2, 0.15) + tol) return { net: h.net, shape: s };
-    }
-  }
-  for (const I of sheet.instances) {
-    for (const p of I.pins) if (p.net && Math.hypot(x - p.x, y - p.y) <= tol + 0.3) return { net: p.net, inst: I, pin: p };
-  }
-  for (const s of sheet.shapes) {
-    if (s.k === 'text' && s.label && textBox(s).contains(x, y, tol)) return { net: s.net, shape: s };
-  }
-  for (const h of sheet.hits) {
-    if (h.kind === 'instance' && h.bbox.contains(x, y, tol)) if (!best || h.bbox.area() < best.bbox.area()) best = h;
-  }
-  return best ? { inst: best.inst } : null;
-}
-
-function shapesBBox(shapes) {
-  const b = new BBox();
-  for (const s of shapes) {
-    if (s.k === 'seg') { b.add(s.x1, s.y1); b.add(s.x2, s.y2); }
-    else if (s.k === 'text') b.addBox(textBox(s));
-    else if (s.x !== undefined) b.add(s.x, s.y, (s.d || s.w || 0) / 2);
-    else if (s.pts) for (let i = 0; i < s.pts.length; i += 2) b.add(s.pts[i], s.pts[i + 1]);
-    else if (s.cx !== undefined) b.add(s.cx, s.cy, s.r);
-  }
-  return b;
-}
-
-return { boardShapeKey, boardLayerList, buildBoardScene, boardHit, schShapeKey, schLayerList, buildSchScene, schHit, shapesBBox };
-})();
-
 __mods["js/kicad/sexpr.js"] = (() => {
 // S-expression helpers for KiCad file writing.
 const q = (s) => '"' + String(s ?? '').replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\r?\n/g, '\\n') + '"';
@@ -2325,6 +2186,575 @@ function justify(h, v, mirror = false) {
 const kicadRef = (n) => (/\d$/.test(n) ? n : `${n}0`);
 
 return { q, f, xy, uuid, sanitize, kicadText, justify, kicadRef };
+})();
+
+__mods["js/kicad/pcb.js"] = (() => {
+// EAGLE board model → KiCad 7 board (.kicad_pcb) + footprint library (.pretty/*.kicad_mod).
+const { q, f, xy, uuid, sanitize, kicadText, justify, kicadRef } = __mods["js/kicad/sexpr.js"];
+const { emitElement } = __mods["js/eagle.js"];
+const { normDeg, DEG, BBox } = __mods["js/geom.js"];
+const { boardLayerInfo } = __mods["js/layers.js"];
+
+const PCB_VERSION = 20221018;
+
+const USER_LAYERS = [
+  [32, 'B.Adhes', 'user', 'B.Adhesive'], [33, 'F.Adhes', 'user', 'F.Adhesive'], [34, 'B.Paste', 'user'], [35, 'F.Paste', 'user'],
+  [36, 'B.SilkS', 'user', 'B.Silkscreen'], [37, 'F.SilkS', 'user', 'F.Silkscreen'], [38, 'B.Mask', 'user'], [39, 'F.Mask', 'user'],
+  [40, 'Dwgs.User', 'user', 'User.Drawings'], [41, 'Cmts.User', 'user', 'User.Comments'], [42, 'Eco1.User', 'user', 'User.Eco1'],
+  [43, 'Eco2.User', 'user', 'User.Eco2'], [44, 'Edge.Cuts', 'user'], [45, 'Margin', 'user'], [46, 'B.CrtYd', 'user', 'B.Courtyard'],
+  [47, 'F.CrtYd', 'user', 'F.Courtyard'], [48, 'B.Fab', 'user'], [49, 'F.Fab', 'user'],
+];
+
+function makeLayerMapper(B) {
+  const inner = new Set();
+  for (const s of B.shapes) {
+    if (typeof s.layer === 'number' && s.layer >= 2 && s.layer <= 15) inner.add(s.layer);
+    // a via only needs the layers it ends on (a 1-16 through via spans whatever copper exists)
+    if (s.k === 'via') for (const l of s.extent.split('-').map(Number)) if (l >= 2 && l <= 15) inner.add(l);
+  }
+  // honour the design-rule layer setup, e.g. "(1*2*15*16)"
+  for (const m of (B.dr.layerSetup || '').matchAll(/\d+/g)) { const n = +m[0]; if (n >= 2 && n <= 15) inner.add(n); }
+  const innerSorted = [...inner].sort((a, b) => a - b);
+  const map = new Map();
+  innerSorted.forEach((l, i) => map.set(l, `In${i + 1}.Cu`));
+  let nInner = innerSorted.length;
+  if (nInner % 2) nInner++;
+  const copper = ['F.Cu', ...Array.from({ length: nInner }, (_, i) => `In${i + 1}.Cu`), 'B.Cu'];
+  const layer = (n) => {
+    if (n === 1) return 'F.Cu';
+    if (n === 16) return 'B.Cu';
+    if (n >= 2 && n <= 15) return map.get(n) || null;
+    return boardLayerInfo(n).kicad || null;
+  };
+  const isCopper = (n) => n >= 1 && n <= 16;
+  return { layer, isCopper, copper, nInner };
+}
+
+const stroke = (w) => `(stroke (width ${f(w)}) (type solid))`;
+
+/** Converts generic shapes to KiCad graphic items. P maps EAGLE abs → KiCad coords (already local for footprints). */
+function graphics(shapes, P, L, prefix, angleOff = 0) {
+  const out = [];
+  const ts = prefix === 'fp' ? `(tstamp ${uuid()})` : `(tstamp ${uuid()})`;
+  for (const s of shapes) {
+    const lay = L.layer(s.layer);
+    if (!lay) continue;
+    const w = s.w || (lay === 'Edge.Cuts' ? 0.1 : 0.12);
+    switch (s.k) {
+      case 'seg': {
+        const [a, b] = P(s.x1, s.y1), [c, d] = P(s.x2, s.y2);
+        out.push(`(${prefix}_line (start ${f(a)} ${f(b)}) (end ${f(c)} ${f(d)}) ${stroke(w)} (layer ${q(lay)}) ${ts})`);
+        break;
+      }
+      case 'arc': {
+        const am = (s.a0 + s.a1) / 2;
+        const [x0, y0] = P(s.cx + s.r * Math.cos(s.a0), s.cy + s.r * Math.sin(s.a0));
+        const [xm, ym] = P(s.cx + s.r * Math.cos(am), s.cy + s.r * Math.sin(am));
+        const [x1, y1] = P(s.cx + s.r * Math.cos(s.a1), s.cy + s.r * Math.sin(s.a1));
+        out.push(`(${prefix}_arc (start ${f(x0)} ${f(y0)}) (mid ${f(xm)} ${f(ym)}) (end ${f(x1)} ${f(y1)}) ${stroke(w)} (layer ${q(lay)}) ${ts})`);
+        break;
+      }
+      case 'circle': {
+        const [x, y] = P(s.x, s.y);
+        const filled = !(s.w > 0);
+        out.push(`(${prefix}_circle (center ${f(x)} ${f(y)}) (end ${f(x + s.r)} ${f(y)}) ${stroke(filled ? 0 : s.w)} (fill ${filled ? 'solid' : 'none'}) (layer ${q(lay)}) ${ts})`);
+        break;
+      }
+      case 'poly': {
+        if (s.pts.length < 6) break;
+        const pts = [];
+        for (let i = 0; i < s.pts.length; i += 2) { const [x, y] = P(s.pts[i], s.pts[i + 1]); pts.push(xy(x, y)); }
+        out.push(`(${prefix}_poly (pts ${pts.join(' ')}) ${stroke(s.w || 0)} (fill ${s.fill ? 'solid' : 'none'}) (layer ${q(lay)}) ${ts})`);
+        break;
+      }
+      case 'text': out.push(textItem(s, P, lay, prefix === 'fp' ? 'fp_text user' : 'gr_text', angleOff)); break;
+      default: break;
+    }
+  }
+  return out;
+}
+
+function textItem(s, P, lay, head, angleOff = 0, hidden = false) {
+  const [x, y] = P(s.x, s.y);
+  const ang = normDeg((s.mirror ? -s.angle : s.angle) + angleOff);
+  const size = s.size || 1.27;
+  const th = Math.max(0.05, size * (s.ratio ?? 8) / 100);
+  const isBack = lay.startsWith('B.');
+  return `(${head} ${q(kicadText(s.str))} (at ${f(x)} ${f(y)} ${f(ang)}) (layer ${q(lay)})${hidden ? ' hide' : ''} (effects (font (size ${f(size)} ${f(size)}) (thickness ${f(th)}))${justify(s.h, s.v, s.mirror || isBack)}) (tstamp ${uuid()}))`;
+}
+
+function padItem(p, P, L, netStr, back) {
+  const [x, y] = P(p.th ? p.hx : p.x, p.th ? p.hy : p.y);
+  const ang = f(normDeg(p.angle));
+  const name = q(p.name);
+  if (p.th) {
+    let shape = 'circle', extra = '';
+    if (p.shape === 'rect') shape = 'rect';
+    else if (p.shape === 'oval') shape = 'oval';
+    else if (p.shape === 'oct') { shape = 'roundrect'; extra = ' (roundrect_rratio 0) (chamfer_ratio 0.2929) (chamfer top_left top_right bottom_left bottom_right)'; }
+    const drill = p.offset ? `(drill ${f(p.drill)} (offset ${f(p.offset)} 0))` : `(drill ${f(p.drill)})`;
+    const layers = p.stop === false ? '"*.Cu"' : '"*.Cu" "*.Mask"';
+    return `(pad ${name} thru_hole ${shape} (at ${f(x)} ${f(y)} ${ang}) (size ${f(p.w)} ${f(p.h)}) ${drill} (layers ${layers})${extra}${netStr} (tstamp ${uuid()}))`;
+  }
+  const side = back ? 'B' : 'F';
+  const copper = L.layer(p.layer) || `${side}.Cu`;
+  const s2 = copper.startsWith('B.') ? 'B' : 'F';
+  const layers = [q(copper)];
+  if (p.cream !== false && (copper === 'F.Cu' || copper === 'B.Cu')) layers.push(q(`${s2}.Paste`));
+  if (p.stop !== false && (copper === 'F.Cu' || copper === 'B.Cu')) layers.push(q(`${s2}.Mask`));
+  const rr = p.shape === 'roundrect' ? ` (roundrect_rratio ${f(Math.min(0.5, p.rr / Math.min(p.w, p.h)))})` : '';
+  return `(pad ${name} smd ${p.shape === 'roundrect' ? 'roundrect' : 'rect'} (at ${f(x)} ${f(y)} ${ang}) (size ${f(p.w)} ${f(p.h)}) (layers ${layers.join(' ')})${rr}${netStr} (tstamp ${uuid()}))`;
+}
+
+/** Footprint s-expr for an element (absolute shapes) placed at its EAGLE position. */
+function footprintFor(el, shapes, L, netIndex, fpId, opts = {}) {
+  const back = el.rot.mirror;
+  // KiCad orientation shown in the footprint properties
+  const phi = back ? normDeg(180 - el.rot.angle) : el.rot.angle;
+  const G = opts.P || ((x, y) => [x, -y]);
+  const [PX, PY] = opts.library ? [0, 0] : G(el.x, el.y);
+  const c = Math.cos(phi * DEG), s = Math.sin(phi * DEG);
+  // EAGLE absolute -> KiCad footprint-local (un-rotated)
+  const P = (x, y) => { const [ax, ay] = G(x, y); const X = ax - PX, Y = ay - PY; return [X * c - Y * s, X * s + Y * c]; };
+  const lines = [];
+  if (opts.version) lines.push(`(footprint ${q(fpId)} (version ${PCB_VERSION}) (generator pcbnew)\n  (layer "F.Cu")`);
+  else lines.push(`(footprint ${q(fpId)}${el.locked ? ' locked' : ''} (layer ${q(back ? 'B.Cu' : 'F.Cu')})`);
+  lines.push(`  (tstamp ${uuid()})`);
+  if (!opts.library) lines.push(`  (at ${f(PX)} ${f(PY)}${phi ? ' ' + f(phi) : ''})`);
+  if (el.pkg?.description) lines.push(`  (descr ${q(el.pkg.description.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 500))})`);
+  if (opts.path) lines.push(`  (path ${q(opts.path)})`);
+  for (const [k, v] of Object.entries(el.attrs || {})) if (v && k !== 'NAME' && k !== 'VALUE') lines.push(`  (property ${q(k)} ${q(v)})`);
+  const hasTH = el.pads.some((p) => p.th), hasSMD = el.pads.some((p) => !p.th);
+  const attrs = [];
+  if (hasTH) attrs.push('through_hole'); else if (hasSMD) attrs.push('smd');
+  if (!el.pads.length) attrs.push('board_only', 'exclude_from_pos_files', 'exclude_from_bom');
+  if (el.populate === false) attrs.push('exclude_from_bom', 'exclude_from_pos_files');
+  if (attrs.length) lines.push(`  (attr ${[...new Set(attrs)].join(' ')})`);
+  const nameSh = shapes.find((x) => x.k === 'text' && (x.attr === 'NAME' || x.src === '>NAME'));
+  const valSh = shapes.find((x) => x.k === 'text' && (x.attr === 'VALUE' || x.src === '>VALUE'));
+  const silk = back ? 'B.SilkS' : 'F.SilkS', fab = back ? 'B.Fab' : 'F.Fab';
+  const fieldText = (kind, sh, txt, defLayer) => {
+    if (sh) {
+      const lay = L.layer(sh.layer) || defLayer;
+      return '  ' + textItem({ ...sh, str: txt }, P, lay, `fp_text ${kind}`);
+    }
+    return `  (fp_text ${kind} ${q(kicadText(txt))} (at 0 0 ${f(phi)}) (layer ${q(defLayer)}) hide (effects (font (size 1 1) (thickness 0.15))${back ? ' (justify mirror)' : ''}) (tstamp ${uuid()}))`;
+  };
+  lines.push(fieldText('reference', nameSh, opts.library ? 'REF**' : kicadRef(el.name), silk));
+  lines.push(fieldText('value', valSh, opts.library ? (el.package || '') : el.value || '', fab));
+  const gfx = shapes.filter((x) => x !== nameSh && x !== valSh && x.k !== 'pad' && x.k !== 'hole' && !(x.k === 'text' && (x.attr || x.src?.startsWith('>')) && opts.library));
+  for (const g of graphics(gfx, P, L, 'fp')) lines.push('  ' + g);
+  for (const p of el.pads) {
+    const ni = p.net !== undefined ? netIndex.get(p.net) : undefined;
+    const netStr = !opts.library && ni ? ` (net ${ni} ${q(kicadText(p.net))})` : '';
+    lines.push('  ' + padItem(p, P, L, netStr, back));
+  }
+  for (const h of shapes.filter((x) => x.k === 'hole')) {
+    const [x, y] = P(h.x, h.y);
+    lines.push(`  (pad "" np_thru_hole circle (at ${f(x)} ${f(y)}) (size ${f(h.d)} ${f(h.d)}) (drill ${f(h.d)}) (layers "*.Cu" "*.Mask") (tstamp ${uuid()}))`);
+  }
+  lines.push(')');
+  return lines.join('\n');
+}
+
+function exportBoard(B, proj, opts = {}) {
+  const L = makeLayerMapper(B);
+  const refPaths = opts.refPaths || new Map();
+  const netIndex = new Map();
+  const netLines = ['(net 0 "")'];
+  let ni = 1;
+  for (const n of B.nets.keys()) { netIndex.set(n, ni); netLines.push(`(net ${ni} ${q(kicadText(n))})`); ni++; }
+  const bb = B.outline || B.bbox;
+  const papers = [['A4', 297, 210], ['A3', 420, 297], ['A2', 594, 420], ['A1', 841, 594], ['A0', 1189, 841]];
+  const paper = papers.find(([, w, h]) => bb.w + 20 <= w && bb.h + 20 <= h);
+  const pageW = paper ? paper[1] : Math.ceil(bb.w + 20), pageH = paper ? paper[2] : Math.ceil(bb.h + 20);
+  // place the board in the middle of the page (EAGLE Y is up, KiCad Y is down)
+  const OX = Math.round(((pageW - bb.w) / 2 - bb.x0) / 1.27) * 1.27;
+  const OY = Math.round(((pageH - bb.h) / 2 + bb.y1) / 1.27) * 1.27;
+  const P = (x, y) => [x + OX, OY - y];
+  const fpId = (el) => `${proj}:${sanitize(`${el.library}_${el.package}`)}`;
+  const body = [];
+
+  // footprints
+  for (const el of B.elements) {
+    if (!el.pkg) continue;
+    body.push(footprintFor(el, el.shapes, L, netIndex, fpId(el), { path: refPaths.get(el.name), P }));
+  }
+
+  // board-level graphics (plain)
+  const plain = B.shapes.filter((s) => !s.owner && !s.net && s.k !== 'via');
+  const holes = plain.filter((s) => s.k === 'hole');
+  const plainGfx = [];
+  for (const s of plain) {
+    if (s.k === 'hole') continue;
+    if (s.k === 'poly' && L.isCopper(s.layer)) { body.push(zoneItem(s, P, L, 0, '', B)); continue; }
+    plainGfx.push(s);
+  }
+  for (const g of graphics(plainGfx, P, L, 'gr')) body.push(g);
+  holes.forEach((h, i) => {
+    const [x, y] = P(h.x, h.y);
+    body.push(`(footprint ${q(`${proj}:MountingHole_${f(h.d)}mm`)} (layer "F.Cu") (tstamp ${uuid()}) (at ${f(x)} ${f(y)})
+  (attr board_only exclude_from_pos_files exclude_from_bom)
+  (fp_text reference ${q(`H${i + 1}`)} (at 0 ${f(-h.d / 2 - 1)}) (layer "F.SilkS") hide (effects (font (size 1 1) (thickness 0.15))) (tstamp ${uuid()}))
+  (fp_text value "Hole" (at 0 ${f(h.d / 2 + 1)}) (layer "F.Fab") hide (effects (font (size 1 1) (thickness 0.15))) (tstamp ${uuid()}))
+  (pad "" np_thru_hole circle (at 0 0) (size ${f(h.d)} ${f(h.d)}) (drill ${f(h.d)}) (layers "*.Cu" "*.Mask") (tstamp ${uuid()}))
+)`);
+  });
+
+  // signals: tracks, vias, zones
+  for (const s of B.shapes) {
+    if (!s.net || s.owner) continue;
+    const n = netIndex.get(s.net) || 0;
+    if (s.k === 'seg' || s.k === 'arc') {
+      if (!L.isCopper(s.layer)) continue;
+      const lay = L.layer(s.layer);
+      if (!lay) continue;
+      if (s.k === 'seg') {
+        const [a, b] = P(s.x1, s.y1), [c, d] = P(s.x2, s.y2);
+        if (a === c && b === d) continue;
+        body.push(`(segment (start ${f(a)} ${f(b)}) (end ${f(c)} ${f(d)}) (width ${f(s.w || 0.1524)}) (layer ${q(lay)}) (net ${n}) (tstamp ${uuid()}))`);
+      } else {
+        const am = (s.a0 + s.a1) / 2;
+        const [x0, y0] = P(s.cx + s.r * Math.cos(s.a0), s.cy + s.r * Math.sin(s.a0));
+        const [xm, ym] = P(s.cx + s.r * Math.cos(am), s.cy + s.r * Math.sin(am));
+        const [x1, y1] = P(s.cx + s.r * Math.cos(s.a1), s.cy + s.r * Math.sin(s.a1));
+        body.push(`(arc (start ${f(x0)} ${f(y0)}) (mid ${f(xm)} ${f(ym)}) (end ${f(x1)} ${f(y1)}) (width ${f(s.w || 0.1524)}) (layer ${q(lay)}) (net ${n}) (tstamp ${uuid()}))`);
+      }
+    } else if (s.k === 'via') {
+      const [x, y] = P(s.x, s.y);
+      const [a, b] = s.extent.split('-').map(Number);
+      const la = L.layer(Math.min(a, b)) || 'F.Cu', lb = L.layer(Math.max(a, b)) || 'B.Cu';
+      const blind = !(la === 'F.Cu' && lb === 'B.Cu');
+      body.push(`(via${blind ? ' blind' : ''} (at ${f(x)} ${f(y)}) (size ${f(s.d)}) (drill ${f(s.drill)}) (layers ${q(la)} ${q(lb)}) (net ${n}) (tstamp ${uuid()}))`);
+    } else if (s.k === 'poly' && s.zone) {
+      if (!L.isCopper(s.layer)) continue;
+      body.push(zoneItem(s, P, L, n, s.net, B));
+    }
+  }
+
+  const layerLines = [];
+  L.copper.forEach((name, i) => {
+    const id = name === 'F.Cu' ? 0 : name === 'B.Cu' ? 31 : i;
+    layerLines.push(`(${id} ${q(name)} signal)`);
+  });
+  for (const [id, name, type, user] of USER_LAYERS) layerLines.push(`(${id} ${q(name)} ${type}${user ? ' ' + q(user) : ''})`);
+  const thickness = 1.6;
+  const text = `(kicad_pcb (version ${PCB_VERSION}) (generator fusion_pcb_viewer)
+
+  (general
+    (thickness ${thickness})
+  )
+
+  ${paper ? `(paper ${q(paper[0])})` : `(paper "User" ${f(pageW)} ${f(pageH)})`}
+  (layers
+${layerLines.map((l) => '    ' + l).join('\n')}
+  )
+
+  (setup
+    (pad_to_mask_clearance 0)
+    (pcbplotparams
+      (layerselection 0x00010fc_ffffffff)
+      (outputformat 1)
+      (outputdirectory "gerbers/")
+    )
+  )
+
+${netLines.map((l) => '  ' + l).join('\n')}
+
+${body.map((b) => b.split('\n').map((l) => '  ' + l).join('\n')).join('\n')}
+)
+`;
+  return { name: `${proj}.kicad_pcb`, data: text, layerMap: L, offset: [OX, OY] };
+}
+
+function zoneItem(s, P, L, n, netName, B) {
+  const lay = L.layer(s.layer);
+  const src = s.src || {};
+  const clearance = Number.isFinite(src.isolate) && src.isolate > 0 ? src.isolate : B.dr.mdWireWire || 0.2032;
+  const minTh = Math.max(0.1, s.w || 0.254);
+  const priority = Math.max(0, 6 - (src.rank || 1));
+  const pts = [];
+  for (let i = 0; i < s.pts.length; i += 2) { const [x, y] = P(s.pts[i], s.pts[i + 1]); pts.push(xy(x, y)); }
+  if (src.pour === 'cutout') {
+    return `(zone (net 0) (net_name "") (layer ${q(lay)}) (tstamp ${uuid()}) (hatch edge 0.508)
+  (connect_pads (clearance 0))
+  (min_thickness 0.254) (filled_areas_thickness no)
+  (keepout (tracks allowed) (vias allowed) (pads allowed) (copperpour not_allowed) (footprints allowed))
+  (fill (thermal_gap 0.508) (thermal_bridge_width 0.508))
+  (polygon (pts ${pts.join(' ')}))
+)`;
+  }
+  const hatch = src.pour === 'hatch' ? ` (mode hatch) (hatch_thickness ${f(minTh)}) (hatch_gap ${f(Math.max(src.spacing || 1.27, minTh * 2))}) (hatch_orientation 0)` : '';
+  return `(zone (net ${n}) (net_name ${q(kicadText(netName))}) (layer ${q(lay)}) (tstamp ${uuid()}) (hatch edge 0.508)
+  (priority ${priority})
+  (connect_pads${src.thermals === false ? ' yes' : ''} (clearance ${f(clearance)}))
+  (min_thickness ${f(minTh)}) (filled_areas_thickness no)
+  (fill${hatch} (thermal_gap ${f(clearance)}) (thermal_bridge_width ${f(Math.max(minTh, 0.3))})${src.orphans ? '' : ' (island_removal_mode 0)'})
+  (polygon (pts ${pts.join(' ')}))
+)`;
+}
+
+/** One .kicad_mod per used package, at the origin (top side). */
+function exportFootprintLibrary(B, proj) {
+  const L = makeLayerMapper(B);
+  const files = [];
+  const done = new Set();
+  const all = [];
+  for (const el of B.elements) if (el.pkg) all.push([el.lib, el.pkg]);
+  for (const [lib, pkg] of all) {
+    const name = sanitize(`${lib.name}_${pkg.name}`);
+    if (done.has(name)) continue;
+    done.add(name);
+    const el = { name: 'REF**', value: pkg.name, package: pkg.name, library: lib.name, x: 0, y: 0, rot: { angle: 0, mirror: false }, attrs: {}, attrDefs: [], pads: [], bbox: new BBox(), pkg, smashed: false };
+    const shapes = emitElement(el, pkg, { x: 0, y: 0, angle: 0, mirror: false }, B.dr);
+    files.push({ name: `${proj}.pretty/${name}.kicad_mod`, data: footprintFor(el, shapes, L, new Map(), name, { library: true, version: true })+ '\n' });
+  }
+  return files;
+}
+
+return { PCB_VERSION, makeLayerMapper, exportBoard, exportFootprintLibrary };
+})();
+
+__mods["js/scenes.js"] = (() => {
+// Builds drawable scenes (layer batches with KiCad-like colors) and hit testing for boards and schematic sheets.
+const { newBatch, addToBatch } = __mods["js/render.js"];
+const { boardLayerInfo, KICAD_PCB_COLORS, SCH_COLORS, kicadDisplayName, kicadLayerStyle, kicadPanelIndex, kicadDrawOrder } = __mods["js/layers.js"];
+const { makeLayerMapper } = __mods["js/kicad/pcb.js"];
+const { padOutline } = __mods["js/eagle.js"];
+const { distToSeg, pointInPoly, BBox, textBox } = __mods["js/geom.js"];
+
+// ------------------------------------------------------------------ board
+// Shapes are grouped by the KiCad layer they map to (same mapping as the KiCad export).
+function boardKeyer(B) {
+  if (B._keyer) return B._keyer;
+  const L = makeLayerMapper(B);
+  const names = new Map();
+  const key = (n) => {
+    if (names.has(n)) return names.get(n);
+    let k;
+    if (n === 19) k = 'Ratsnest';
+    else if (n === 41 || n === 42 || n === 43) k = 'Rule Areas';
+    else if (n === 23 || n === 24) k = 'User.Eco1';
+    else if ([33, 34, 37, 38, 44, 45].includes(n)) k = 'User.Eco2';
+    else k = kicadDisplayName(L.layer(n) || 'Dwgs.User');
+    names.set(n, k);
+    return k;
+  };
+  B._keyer = { key, nInner: L.nInner, sources: new Map() };
+  for (const s of B.shapes) {
+    const k = boardShapeKey(s, B._keyer);
+    if (typeof s.layer === 'number' && !(s.k === 'pad' && s.th)) {
+      if (!B._keyer.sources.has(k)) B._keyer.sources.set(k, new Set());
+      B._keyer.sources.get(k).add(B.layers.get(s.layer)?.name || boardLayerInfo(s.layer).name);
+    }
+  }
+  return B._keyer;
+}
+
+function boardShapeKey(s, keyer) {
+  if (s._key) return s._key;
+  if (!keyer) return undefined;
+  let k;
+  if (s.k === 'pad') k = s.th ? 'Pads' : keyer.key(s.layer);
+  else if (s.k === 'via') k = 'Vias';
+  else if (s.k === 'hole') k = 'Pads';
+  else k = keyer.key(s.layer);
+  s._key = k;
+  return k;
+}
+
+function boardLayerList(B) {
+  const keyer = boardKeyer(B);
+  const keys = new Set(['F.Cu', 'B.Cu', 'Pads', 'Vias', 'Edge.Cuts']);
+  for (const s of B.shapes) keys.add(boardShapeKey(s, keyer));
+  for (let i = 1; i <= keyer.nInner; i++) keys.add(`In${i}.Cu`);
+  return [...keys].map((k) => ({ key: k, name: k, ...kicadLayerStyle(k), sources: [...(keyer.sources.get(k) || [])] }));
+}
+
+function buildBoardScene(B, state) {
+  const keyer = boardKeyer(B);
+  const batches = new Map();
+  for (const s of B.shapes) {
+    const key = boardShapeKey(s, keyer);
+    let b = batches.get(key);
+    if (!b) { b = newBatch(); batches.set(key, b); }
+    addToBatch(b, s);
+  }
+  // copper pours: per layer, per net -> zone path + "cut" geometry of everything else
+  const pours = new Map();
+  const zoneShapes = B.shapes.filter((s) => s.zone && s.layer >= 1 && s.layer <= 16);
+  if (zoneShapes.length) {
+    const byLayer = new Map();
+    for (const z of zoneShapes) {
+      if (!byLayer.has(z.layer)) byLayer.set(z.layer, new Map());
+      const m = byLayer.get(z.layer);
+      if (!m.has(z.net)) m.set(z.net, []);
+      m.get(z.net).push(z);
+    }
+    const iso0 = B.dr.mdWireWire || 0.2;
+    for (const [layer, nets] of byLayer) {
+      const items = B.shapes.filter((s) => !s.zone && (s.layer === layer || s.k === 'via' || (s.k === 'pad' && s.th) || s.k === 'hole') && s.k !== 'text');
+      const list = [];
+      for (const [net, zones] of nets) {
+        if (zones.some((z) => z.src?.pour === 'cutout')) continue;
+        const zp = new Path2D();
+        for (const z of zones) { zp.moveTo(z.pts[0], z.pts[1]); for (let i = 2; i < z.pts.length; i += 2) zp.lineTo(z.pts[i], z.pts[i + 1]); zp.closePath(); }
+        const iso = Math.max(...zones.map((z) => (Number.isFinite(z.src?.isolate) && z.src.isolate > 0 ? z.src.isolate : iso0)));
+        const cut = newBatch();
+        for (const it of items) if (it.net !== net || it.k === 'hole') addToBatch(cut, it);
+        // other-net pours on this layer with better (lower) rank also take precedence
+        const rank = Math.min(...zones.map((z) => z.src?.rank || 1));
+        const others = [];
+        for (const [n2, z2] of nets) if (n2 !== net) for (const z of z2) if ((z.src?.rank || 1) < rank) others.push(z);
+        const op = new Path2D();
+        for (const z of others) { op.moveTo(z.pts[0], z.pts[1]); for (let i = 2; i < z.pts.length; i += 2) op.lineTo(z.pts[i], z.pts[i + 1]); op.closePath(); }
+        const width = Math.max(...zones.map((z) => z.w || 0));
+        list.push({ net, path: zp, cut, iso, others: others.length ? op : null, width });
+      }
+      if (list.length) pours.set(keyer.key(layer), list);
+    }
+  }
+  const list = boardLayerList(B);
+  const layers = list.map((L) => ({
+    key: L.key, name: L.name, sources: L.sources, color: state.colors?.get(L.key) || L.color, alpha: L.alpha,
+    visible: state.visible.has(L.key) ? state.visible.get(L.key) : L.visible,
+    batch: batches.get(L.key) || newBatch(), order: kicadDrawOrder(L.key, state.flip, keyer.nInner), panel: kicadPanelIndex(L.key), zoneAlpha: 0.32,
+    minLine: 1, pours: pours.get(L.key),
+  }));
+  if (state.activeLayer !== undefined) {
+    const al = layers.find((l) => l.key === state.activeLayer);
+    if (al) al.order = /\.Cu$/.test(al.key) ? 140 : 1000;
+    if (state.highContrast) for (const l of layers) if (l.key !== state.activeLayer && l.key !== 'Pads' && l.key !== 'Vias') l.dimmed = true;
+  }
+  layers.sort((a, b) => a.order - b.order);
+  return {
+    background: KICAD_PCB_COLORS.background, gridColor: '#3a4a5c', holeColor: '#0b1520', layers, bbox: B.bbox,
+    gridSteps: [0.0254, 0.05, 0.1, 0.127, 0.25, 0.5, 0.635, 1, 1.27, 2.54, 5, 10, 25.4, 50, 100],
+  };
+}
+
+function boardHit(B, x, y, scene, tol) {
+  const vis = new Set(scene.layers.filter((l) => l.visible).map((l) => l.key));
+  // pass 1: copper with nets (topmost first)
+  const order = new Map(scene.layers.map((l, i) => [l.key, i]));
+  let best = null, bestOrder = -1;
+  for (const s of B.shapes) {
+    const key = boardShapeKey(s, boardKeyer(B));
+    if (!vis.has(key)) continue;
+    let hit = false;
+    switch (s.k) {
+      case 'pad': {
+        const o = padOutline(s);
+        hit = o.circle ? Math.hypot(x - o.circle[0], y - o.circle[1]) <= o.circle[2] + tol : pointInPoly(x, y, o.pts);
+        break;
+      }
+      case 'via': hit = Math.hypot(x - s.x, y - s.y) <= s.d / 2 + tol; break;
+      case 'seg': if (s.net) hit = distToSeg(x, y, s.x1, s.y1, s.x2, s.y2) <= s.w / 2 + tol; break;
+      case 'arc': if (s.net) { const d = Math.hypot(x - s.cx, y - s.cy); if (Math.abs(d - s.r) <= s.w / 2 + tol) { let a = Math.atan2(y - s.cy, x - s.cx); while (a < s.a0) a += 2 * Math.PI; hit = a <= s.a1; } } break;
+      case 'poly': if (s.zone) hit = pointInPoly(x, y, s.pts); break;
+      default: break;
+    }
+    if (!hit) continue;
+    let o = order.get(key) ?? 0;
+    if (s.k === 'poly') o -= 1000; // zones lowest priority
+    if (s.k === 'pad' || s.k === 'via') o += 1000;
+    if (o > bestOrder) { best = s; bestOrder = o; }
+  }
+  let comp = null;
+  for (const el of B.elements) {
+    const side = el.rot.mirror ? 'B.' : 'F.';
+    if (!vis.has(side + 'Cu') && !vis.has(side + 'Silkscreen') && !vis.has(side + 'Fab') && !vis.has('Pads')) continue;
+    if (el.bbox.contains(x, y, tol)) if (!comp || el.bbox.area() < comp.bbox.area()) comp = el;
+  }
+  return { shape: best, element: best?.owner ? B.elements.find((e) => e.name === best.owner) : comp, comp };
+}
+
+// ------------------------------------------------------------------ schematic
+// Keys use the item names from KiCad's schematic Appearance panel.
+function schShapeKey(s) {
+  if (s.k === 'pinpt') return null;
+  if (s.label || (s.net && s.k === 'poly')) return 'Labels';
+  if (s.junction) return 'Junctions';
+  if (s.k === 'text') {
+    if (s.layer === 'pinname') return 'Pin names';
+    if (s.layer === 'pinnum') return 'Pin numbers';
+    if (s.attr === 'NAME' || s.src === '>NAME' || s.layer === 95) return 'Symbol references';
+    if (s.attr === 'VALUE' || s.src === '>VALUE' || s.layer === 96) return 'Symbol values';
+    return s.inst || s.owner ? 'Symbol fields' : 'Notes';
+  }
+  if (s.layer === 91) return 'Wires';
+  if (s.layer === 92) return 'Buses';
+  if (s.layer === 93) return 'Pins';
+  if (s.layer === 90) return 'Sheet borders';
+  if (s.layer === 94 || s.inst || s.owner) return 'Symbol body outlines';
+  return 'Notes';
+}
+
+const SCH_KEYS = [
+  ['Wires', SCH_COLORS.wire], ['Buses', SCH_COLORS.bus], ['Junctions', SCH_COLORS.junction], ['Labels', SCH_COLORS.label],
+  ['Pins', SCH_COLORS.pin], ['Pin names', SCH_COLORS.pinName], ['Pin numbers', SCH_COLORS.pinNum],
+  ['Symbol references', SCH_COLORS.reference], ['Symbol values', SCH_COLORS.value], ['Symbol fields', SCH_COLORS.field],
+  ['Symbol body outlines', SCH_COLORS.symbol], ['Sheet borders', SCH_COLORS.sheet], ['Notes', SCH_COLORS.notes],
+];
+const SCH_DRAW = ['Notes', 'Sheet borders', 'Symbol body outlines', 'Pins', 'Buses', 'Wires', 'Junctions'];
+
+function schLayerList(S, sheet) {
+  const keys = new Set();
+  for (const s of sheet.shapes) { const k = schShapeKey(s); if (k !== null) keys.add(k); }
+  return SCH_KEYS.filter(([k]) => keys.has(k)).map(([k, color], i) => ({ key: k, name: k, color, visible: true, panel: i }));
+}
+
+function buildSchScene(S, sheet, state) {
+  const batches = new Map();
+  for (const s of sheet.shapes) {
+    const key = schShapeKey(s);
+    if (key === null) continue;
+    let b = batches.get(key);
+    if (!b) { b = newBatch(); batches.set(key, b); }
+    addToBatch(b, s);
+  }
+  const layers = schLayerList(S, sheet).map((L) => ({
+    ...L, color: state.colors?.get(L.key) || L.color, visible: state.visible.has(L.key) ? state.visible.get(L.key) : L.visible,
+    batch: batches.get(L.key) || newBatch(), order: SCH_DRAW.includes(L.key) ? SCH_DRAW.indexOf(L.key) : 10, minLine: 1,
+  }));
+  layers.sort((a, b) => a.order - b.order);
+  return { background: SCH_COLORS.background, gridColor: '#c9c6bb', layers, bbox: sheet.bbox, gridSteps: [0.635, 1.27, 2.54, 5.08, 12.7, 25.4, 50.8, 127, 254] };
+}
+
+function schHit(sheet, x, y, tol) {
+  let best = null;
+  for (const h of sheet.hits) {
+    if (h.kind === 'wire') {
+      const s = h.shape;
+      const d = s.k === 'seg' ? distToSeg(x, y, s.x1, s.y1, s.x2, s.y2) : Math.abs(Math.hypot(x - s.cx, y - s.cy) - s.r);
+      if (d <= Math.max(s.w / 2, 0.15) + tol) return { net: h.net, shape: s };
+    }
+  }
+  for (const I of sheet.instances) {
+    for (const p of I.pins) if (p.net && Math.hypot(x - p.x, y - p.y) <= tol + 0.3) return { net: p.net, inst: I, pin: p };
+  }
+  for (const s of sheet.shapes) {
+    if (s.k === 'text' && s.label && textBox(s).contains(x, y, tol)) return { net: s.net, shape: s };
+  }
+  for (const h of sheet.hits) {
+    if (h.kind === 'instance' && h.bbox.contains(x, y, tol)) if (!best || h.bbox.area() < best.bbox.area()) best = h;
+  }
+  return best ? { inst: best.inst } : null;
+}
+
+function shapesBBox(shapes) {
+  const b = new BBox();
+  for (const s of shapes) {
+    if (s.k === 'seg') { b.add(s.x1, s.y1); b.add(s.x2, s.y2); }
+    else if (s.k === 'text') b.addBox(textBox(s));
+    else if (s.x !== undefined) b.add(s.x, s.y, (s.d || s.w || 0) / 2);
+    else if (s.pts) for (let i = 0; i < s.pts.length; i += 2) b.add(s.pts[i], s.pts[i + 1]);
+    else if (s.cx !== undefined) b.add(s.cx, s.cy, s.r);
+  }
+  return b;
+}
+
+return { boardShapeKey, boardLayerList, buildBoardScene, boardHit, schShapeKey, schLayerList, buildSchScene, schHit, shapesBBox };
 })();
 
 __mods["js/kicad/sch.js"] = (() => {
@@ -2717,332 +3147,6 @@ function indent(s, n) {
 return { SCH_VERSION, shapesToSch, exportSchematic, parsePrim, xf, BBox, arcFromCurve };
 })();
 
-__mods["js/kicad/pcb.js"] = (() => {
-// EAGLE board model → KiCad 7 board (.kicad_pcb) + footprint library (.pretty/*.kicad_mod).
-const { q, f, xy, uuid, sanitize, kicadText, justify, kicadRef } = __mods["js/kicad/sexpr.js"];
-const { emitElement } = __mods["js/eagle.js"];
-const { normDeg, DEG, BBox } = __mods["js/geom.js"];
-const { boardLayerInfo } = __mods["js/layers.js"];
-
-const PCB_VERSION = 20221018;
-
-const USER_LAYERS = [
-  [32, 'B.Adhes', 'user', 'B.Adhesive'], [33, 'F.Adhes', 'user', 'F.Adhesive'], [34, 'B.Paste', 'user'], [35, 'F.Paste', 'user'],
-  [36, 'B.SilkS', 'user', 'B.Silkscreen'], [37, 'F.SilkS', 'user', 'F.Silkscreen'], [38, 'B.Mask', 'user'], [39, 'F.Mask', 'user'],
-  [40, 'Dwgs.User', 'user', 'User.Drawings'], [41, 'Cmts.User', 'user', 'User.Comments'], [42, 'Eco1.User', 'user', 'User.Eco1'],
-  [43, 'Eco2.User', 'user', 'User.Eco2'], [44, 'Edge.Cuts', 'user'], [45, 'Margin', 'user'], [46, 'B.CrtYd', 'user', 'B.Courtyard'],
-  [47, 'F.CrtYd', 'user', 'F.Courtyard'], [48, 'B.Fab', 'user'], [49, 'F.Fab', 'user'],
-];
-
-function makeLayerMapper(B) {
-  const inner = new Set();
-  for (const s of B.shapes) {
-    if (typeof s.layer === 'number' && s.layer >= 2 && s.layer <= 15) inner.add(s.layer);
-    if (s.k === 'via') { const [a, b] = s.extent.split('-').map(Number); for (let l = Math.min(a, b); l <= Math.max(a, b); l++) if (l >= 2 && l <= 15) inner.add(l); }
-  }
-  // honour the design-rule layer setup, e.g. "(1*2*15*16)"
-  for (const m of (B.dr.layerSetup || '').matchAll(/\d+/g)) { const n = +m[0]; if (n >= 2 && n <= 15) inner.add(n); }
-  const innerSorted = [...inner].sort((a, b) => a - b);
-  const map = new Map();
-  innerSorted.forEach((l, i) => map.set(l, `In${i + 1}.Cu`));
-  let nInner = innerSorted.length;
-  if (nInner % 2) nInner++;
-  const copper = ['F.Cu', ...Array.from({ length: nInner }, (_, i) => `In${i + 1}.Cu`), 'B.Cu'];
-  const layer = (n) => {
-    if (n === 1) return 'F.Cu';
-    if (n === 16) return 'B.Cu';
-    if (n >= 2 && n <= 15) return map.get(n) || null;
-    return boardLayerInfo(n).kicad || null;
-  };
-  const isCopper = (n) => n >= 1 && n <= 16;
-  return { layer, isCopper, copper, nInner };
-}
-
-const stroke = (w) => `(stroke (width ${f(w)}) (type solid))`;
-
-/** Converts generic shapes to KiCad graphic items. P maps EAGLE abs → KiCad coords (already local for footprints). */
-function graphics(shapes, P, L, prefix, angleOff = 0) {
-  const out = [];
-  const ts = prefix === 'fp' ? `(tstamp ${uuid()})` : `(tstamp ${uuid()})`;
-  for (const s of shapes) {
-    const lay = L.layer(s.layer);
-    if (!lay) continue;
-    const w = s.w || (lay === 'Edge.Cuts' ? 0.1 : 0.12);
-    switch (s.k) {
-      case 'seg': {
-        const [a, b] = P(s.x1, s.y1), [c, d] = P(s.x2, s.y2);
-        out.push(`(${prefix}_line (start ${f(a)} ${f(b)}) (end ${f(c)} ${f(d)}) ${stroke(w)} (layer ${q(lay)}) ${ts})`);
-        break;
-      }
-      case 'arc': {
-        const am = (s.a0 + s.a1) / 2;
-        const [x0, y0] = P(s.cx + s.r * Math.cos(s.a0), s.cy + s.r * Math.sin(s.a0));
-        const [xm, ym] = P(s.cx + s.r * Math.cos(am), s.cy + s.r * Math.sin(am));
-        const [x1, y1] = P(s.cx + s.r * Math.cos(s.a1), s.cy + s.r * Math.sin(s.a1));
-        out.push(`(${prefix}_arc (start ${f(x0)} ${f(y0)}) (mid ${f(xm)} ${f(ym)}) (end ${f(x1)} ${f(y1)}) ${stroke(w)} (layer ${q(lay)}) ${ts})`);
-        break;
-      }
-      case 'circle': {
-        const [x, y] = P(s.x, s.y);
-        const filled = !(s.w > 0);
-        out.push(`(${prefix}_circle (center ${f(x)} ${f(y)}) (end ${f(x + s.r)} ${f(y)}) ${stroke(filled ? 0 : s.w)} (fill ${filled ? 'solid' : 'none'}) (layer ${q(lay)}) ${ts})`);
-        break;
-      }
-      case 'poly': {
-        if (s.pts.length < 6) break;
-        const pts = [];
-        for (let i = 0; i < s.pts.length; i += 2) { const [x, y] = P(s.pts[i], s.pts[i + 1]); pts.push(xy(x, y)); }
-        out.push(`(${prefix}_poly (pts ${pts.join(' ')}) ${stroke(s.w || 0)} (fill ${s.fill ? 'solid' : 'none'}) (layer ${q(lay)}) ${ts})`);
-        break;
-      }
-      case 'text': out.push(textItem(s, P, lay, prefix === 'fp' ? 'fp_text user' : 'gr_text', angleOff)); break;
-      default: break;
-    }
-  }
-  return out;
-}
-
-function textItem(s, P, lay, head, angleOff = 0, hidden = false) {
-  const [x, y] = P(s.x, s.y);
-  const ang = normDeg((s.mirror ? -s.angle : s.angle) + angleOff);
-  const size = s.size || 1.27;
-  const th = Math.max(0.05, size * (s.ratio ?? 8) / 100);
-  const isBack = lay.startsWith('B.');
-  return `(${head} ${q(kicadText(s.str))} (at ${f(x)} ${f(y)} ${f(ang)}) (layer ${q(lay)})${hidden ? ' hide' : ''} (effects (font (size ${f(size)} ${f(size)}) (thickness ${f(th)}))${justify(s.h, s.v, s.mirror || isBack)}) (tstamp ${uuid()}))`;
-}
-
-function padItem(p, P, L, netStr, back) {
-  const [x, y] = P(p.th ? p.hx : p.x, p.th ? p.hy : p.y);
-  const ang = f(normDeg(p.angle));
-  const name = q(p.name);
-  if (p.th) {
-    let shape = 'circle', extra = '';
-    if (p.shape === 'rect') shape = 'rect';
-    else if (p.shape === 'oval') shape = 'oval';
-    else if (p.shape === 'oct') { shape = 'roundrect'; extra = ' (roundrect_rratio 0) (chamfer_ratio 0.2929) (chamfer top_left top_right bottom_left bottom_right)'; }
-    const drill = p.offset ? `(drill ${f(p.drill)} (offset ${f(p.offset)} 0))` : `(drill ${f(p.drill)})`;
-    const layers = p.stop === false ? '"*.Cu"' : '"*.Cu" "*.Mask"';
-    return `(pad ${name} thru_hole ${shape} (at ${f(x)} ${f(y)} ${ang}) (size ${f(p.w)} ${f(p.h)}) ${drill} (layers ${layers})${extra}${netStr} (tstamp ${uuid()}))`;
-  }
-  const side = back ? 'B' : 'F';
-  const copper = L.layer(p.layer) || `${side}.Cu`;
-  const s2 = copper.startsWith('B.') ? 'B' : 'F';
-  const layers = [q(copper)];
-  if (p.cream !== false && (copper === 'F.Cu' || copper === 'B.Cu')) layers.push(q(`${s2}.Paste`));
-  if (p.stop !== false && (copper === 'F.Cu' || copper === 'B.Cu')) layers.push(q(`${s2}.Mask`));
-  const rr = p.shape === 'roundrect' ? ` (roundrect_rratio ${f(Math.min(0.5, p.rr / Math.min(p.w, p.h)))})` : '';
-  return `(pad ${name} smd ${p.shape === 'roundrect' ? 'roundrect' : 'rect'} (at ${f(x)} ${f(y)} ${ang}) (size ${f(p.w)} ${f(p.h)}) (layers ${layers.join(' ')})${rr}${netStr} (tstamp ${uuid()}))`;
-}
-
-/** Footprint s-expr for an element (absolute shapes) placed at its EAGLE position. */
-function footprintFor(el, shapes, L, netIndex, fpId, opts = {}) {
-  const back = el.rot.mirror;
-  // KiCad orientation shown in the footprint properties
-  const phi = back ? normDeg(180 - el.rot.angle) : el.rot.angle;
-  const G = opts.P || ((x, y) => [x, -y]);
-  const [PX, PY] = opts.library ? [0, 0] : G(el.x, el.y);
-  const c = Math.cos(phi * DEG), s = Math.sin(phi * DEG);
-  // EAGLE absolute -> KiCad footprint-local (un-rotated)
-  const P = (x, y) => { const [ax, ay] = G(x, y); const X = ax - PX, Y = ay - PY; return [X * c - Y * s, X * s + Y * c]; };
-  const lines = [];
-  if (opts.version) lines.push(`(footprint ${q(fpId)} (version ${PCB_VERSION}) (generator pcbnew)\n  (layer "F.Cu")`);
-  else lines.push(`(footprint ${q(fpId)}${el.locked ? ' locked' : ''} (layer ${q(back ? 'B.Cu' : 'F.Cu')})`);
-  lines.push(`  (tstamp ${uuid()})`);
-  if (!opts.library) lines.push(`  (at ${f(PX)} ${f(PY)}${phi ? ' ' + f(phi) : ''})`);
-  if (el.pkg?.description) lines.push(`  (descr ${q(el.pkg.description.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 500))})`);
-  if (opts.path) lines.push(`  (path ${q(opts.path)})`);
-  for (const [k, v] of Object.entries(el.attrs || {})) if (v && k !== 'NAME' && k !== 'VALUE') lines.push(`  (property ${q(k)} ${q(v)})`);
-  const hasTH = el.pads.some((p) => p.th), hasSMD = el.pads.some((p) => !p.th);
-  const attrs = [];
-  if (hasTH) attrs.push('through_hole'); else if (hasSMD) attrs.push('smd');
-  if (!el.pads.length) attrs.push('board_only', 'exclude_from_pos_files', 'exclude_from_bom');
-  if (el.populate === false) attrs.push('exclude_from_bom', 'exclude_from_pos_files');
-  if (attrs.length) lines.push(`  (attr ${[...new Set(attrs)].join(' ')})`);
-  const nameSh = shapes.find((x) => x.k === 'text' && (x.attr === 'NAME' || x.src === '>NAME'));
-  const valSh = shapes.find((x) => x.k === 'text' && (x.attr === 'VALUE' || x.src === '>VALUE'));
-  const silk = back ? 'B.SilkS' : 'F.SilkS', fab = back ? 'B.Fab' : 'F.Fab';
-  const fieldText = (kind, sh, txt, defLayer) => {
-    if (sh) {
-      const lay = L.layer(sh.layer) || defLayer;
-      return '  ' + textItem({ ...sh, str: txt }, P, lay, `fp_text ${kind}`);
-    }
-    return `  (fp_text ${kind} ${q(kicadText(txt))} (at 0 0 ${f(phi)}) (layer ${q(defLayer)}) hide (effects (font (size 1 1) (thickness 0.15))${back ? ' (justify mirror)' : ''}) (tstamp ${uuid()}))`;
-  };
-  lines.push(fieldText('reference', nameSh, opts.library ? 'REF**' : kicadRef(el.name), silk));
-  lines.push(fieldText('value', valSh, opts.library ? (el.package || '') : el.value || '', fab));
-  const gfx = shapes.filter((x) => x !== nameSh && x !== valSh && x.k !== 'pad' && x.k !== 'hole' && !(x.k === 'text' && (x.attr || x.src?.startsWith('>')) && opts.library));
-  for (const g of graphics(gfx, P, L, 'fp')) lines.push('  ' + g);
-  for (const p of el.pads) {
-    const ni = p.net !== undefined ? netIndex.get(p.net) : undefined;
-    const netStr = !opts.library && ni ? ` (net ${ni} ${q(kicadText(p.net))})` : '';
-    lines.push('  ' + padItem(p, P, L, netStr, back));
-  }
-  for (const h of shapes.filter((x) => x.k === 'hole')) {
-    const [x, y] = P(h.x, h.y);
-    lines.push(`  (pad "" np_thru_hole circle (at ${f(x)} ${f(y)}) (size ${f(h.d)} ${f(h.d)}) (drill ${f(h.d)}) (layers "*.Cu" "*.Mask") (tstamp ${uuid()}))`);
-  }
-  lines.push(')');
-  return lines.join('\n');
-}
-
-function exportBoard(B, proj, opts = {}) {
-  const L = makeLayerMapper(B);
-  const refPaths = opts.refPaths || new Map();
-  const netIndex = new Map();
-  const netLines = ['(net 0 "")'];
-  let ni = 1;
-  for (const n of B.nets.keys()) { netIndex.set(n, ni); netLines.push(`(net ${ni} ${q(kicadText(n))})`); ni++; }
-  const bb = B.outline || B.bbox;
-  const papers = [['A4', 297, 210], ['A3', 420, 297], ['A2', 594, 420], ['A1', 841, 594], ['A0', 1189, 841]];
-  const paper = papers.find(([, w, h]) => bb.w + 20 <= w && bb.h + 20 <= h);
-  const pageW = paper ? paper[1] : Math.ceil(bb.w + 20), pageH = paper ? paper[2] : Math.ceil(bb.h + 20);
-  // place the board in the middle of the page (EAGLE Y is up, KiCad Y is down)
-  const OX = Math.round(((pageW - bb.w) / 2 - bb.x0) / 1.27) * 1.27;
-  const OY = Math.round(((pageH - bb.h) / 2 + bb.y1) / 1.27) * 1.27;
-  const P = (x, y) => [x + OX, OY - y];
-  const fpId = (el) => `${proj}:${sanitize(`${el.library}_${el.package}`)}`;
-  const body = [];
-
-  // footprints
-  for (const el of B.elements) {
-    if (!el.pkg) continue;
-    body.push(footprintFor(el, el.shapes, L, netIndex, fpId(el), { path: refPaths.get(el.name), P }));
-  }
-
-  // board-level graphics (plain)
-  const plain = B.shapes.filter((s) => !s.owner && !s.net && s.k !== 'via');
-  const holes = plain.filter((s) => s.k === 'hole');
-  const plainGfx = [];
-  for (const s of plain) {
-    if (s.k === 'hole') continue;
-    if (s.k === 'poly' && L.isCopper(s.layer)) { body.push(zoneItem(s, P, L, 0, '', B)); continue; }
-    plainGfx.push(s);
-  }
-  for (const g of graphics(plainGfx, P, L, 'gr')) body.push(g);
-  holes.forEach((h, i) => {
-    const [x, y] = P(h.x, h.y);
-    body.push(`(footprint ${q(`${proj}:MountingHole_${f(h.d)}mm`)} (layer "F.Cu") (tstamp ${uuid()}) (at ${f(x)} ${f(y)})
-  (attr board_only exclude_from_pos_files exclude_from_bom)
-  (fp_text reference ${q(`H${i + 1}`)} (at 0 ${f(-h.d / 2 - 1)}) (layer "F.SilkS") hide (effects (font (size 1 1) (thickness 0.15))) (tstamp ${uuid()}))
-  (fp_text value "Hole" (at 0 ${f(h.d / 2 + 1)}) (layer "F.Fab") hide (effects (font (size 1 1) (thickness 0.15))) (tstamp ${uuid()}))
-  (pad "" np_thru_hole circle (at 0 0) (size ${f(h.d)} ${f(h.d)}) (drill ${f(h.d)}) (layers "*.Cu" "*.Mask") (tstamp ${uuid()}))
-)`);
-  });
-
-  // signals: tracks, vias, zones
-  for (const s of B.shapes) {
-    if (!s.net || s.owner) continue;
-    const n = netIndex.get(s.net) || 0;
-    if (s.k === 'seg' || s.k === 'arc') {
-      if (!L.isCopper(s.layer)) continue;
-      const lay = L.layer(s.layer);
-      if (!lay) continue;
-      if (s.k === 'seg') {
-        const [a, b] = P(s.x1, s.y1), [c, d] = P(s.x2, s.y2);
-        if (a === c && b === d) continue;
-        body.push(`(segment (start ${f(a)} ${f(b)}) (end ${f(c)} ${f(d)}) (width ${f(s.w || 0.1524)}) (layer ${q(lay)}) (net ${n}) (tstamp ${uuid()}))`);
-      } else {
-        const am = (s.a0 + s.a1) / 2;
-        const [x0, y0] = P(s.cx + s.r * Math.cos(s.a0), s.cy + s.r * Math.sin(s.a0));
-        const [xm, ym] = P(s.cx + s.r * Math.cos(am), s.cy + s.r * Math.sin(am));
-        const [x1, y1] = P(s.cx + s.r * Math.cos(s.a1), s.cy + s.r * Math.sin(s.a1));
-        body.push(`(arc (start ${f(x0)} ${f(y0)}) (mid ${f(xm)} ${f(ym)}) (end ${f(x1)} ${f(y1)}) (width ${f(s.w || 0.1524)}) (layer ${q(lay)}) (net ${n}) (tstamp ${uuid()}))`);
-      }
-    } else if (s.k === 'via') {
-      const [x, y] = P(s.x, s.y);
-      const [a, b] = s.extent.split('-').map(Number);
-      const la = L.layer(Math.min(a, b)) || 'F.Cu', lb = L.layer(Math.max(a, b)) || 'B.Cu';
-      const blind = !(la === 'F.Cu' && lb === 'B.Cu');
-      body.push(`(via${blind ? ' blind' : ''} (at ${f(x)} ${f(y)}) (size ${f(s.d)}) (drill ${f(s.drill)}) (layers ${q(la)} ${q(lb)}) (net ${n}) (tstamp ${uuid()}))`);
-    } else if (s.k === 'poly' && s.zone) {
-      if (!L.isCopper(s.layer)) continue;
-      body.push(zoneItem(s, P, L, n, s.net, B));
-    }
-  }
-
-  const layerLines = [];
-  L.copper.forEach((name, i) => {
-    const id = name === 'F.Cu' ? 0 : name === 'B.Cu' ? 31 : i;
-    layerLines.push(`(${id} ${q(name)} signal)`);
-  });
-  for (const [id, name, type, user] of USER_LAYERS) layerLines.push(`(${id} ${q(name)} ${type}${user ? ' ' + q(user) : ''})`);
-  const thickness = 1.6;
-  const text = `(kicad_pcb (version ${PCB_VERSION}) (generator fusion_pcb_viewer)
-
-  (general
-    (thickness ${thickness})
-  )
-
-  ${paper ? `(paper ${q(paper[0])})` : `(paper "User" ${f(pageW)} ${f(pageH)})`}
-  (layers
-${layerLines.map((l) => '    ' + l).join('\n')}
-  )
-
-  (setup
-    (pad_to_mask_clearance 0)
-    (pcbplotparams
-      (layerselection 0x00010fc_ffffffff)
-      (outputformat 1)
-      (outputdirectory "gerbers/")
-    )
-  )
-
-${netLines.map((l) => '  ' + l).join('\n')}
-
-${body.map((b) => b.split('\n').map((l) => '  ' + l).join('\n')).join('\n')}
-)
-`;
-  return { name: `${proj}.kicad_pcb`, data: text, layerMap: L, offset: [OX, OY] };
-}
-
-function zoneItem(s, P, L, n, netName, B) {
-  const lay = L.layer(s.layer);
-  const src = s.src || {};
-  const clearance = Number.isFinite(src.isolate) && src.isolate > 0 ? src.isolate : B.dr.mdWireWire || 0.2032;
-  const minTh = Math.max(0.1, s.w || 0.254);
-  const priority = Math.max(0, 6 - (src.rank || 1));
-  const pts = [];
-  for (let i = 0; i < s.pts.length; i += 2) { const [x, y] = P(s.pts[i], s.pts[i + 1]); pts.push(xy(x, y)); }
-  if (src.pour === 'cutout') {
-    return `(zone (net 0) (net_name "") (layer ${q(lay)}) (tstamp ${uuid()}) (hatch edge 0.508)
-  (connect_pads (clearance 0))
-  (min_thickness 0.254) (filled_areas_thickness no)
-  (keepout (tracks allowed) (vias allowed) (pads allowed) (copperpour not_allowed) (footprints allowed))
-  (fill (thermal_gap 0.508) (thermal_bridge_width 0.508))
-  (polygon (pts ${pts.join(' ')}))
-)`;
-  }
-  const hatch = src.pour === 'hatch' ? ` (mode hatch) (hatch_thickness ${f(minTh)}) (hatch_gap ${f(Math.max(src.spacing || 1.27, minTh * 2))}) (hatch_orientation 0)` : '';
-  return `(zone (net ${n}) (net_name ${q(kicadText(netName))}) (layer ${q(lay)}) (tstamp ${uuid()}) (hatch edge 0.508)
-  (priority ${priority})
-  (connect_pads${src.thermals === false ? ' yes' : ''} (clearance ${f(clearance)}))
-  (min_thickness ${f(minTh)}) (filled_areas_thickness no)
-  (fill${hatch} (thermal_gap ${f(clearance)}) (thermal_bridge_width ${f(Math.max(minTh, 0.3))})${src.orphans ? '' : ' (island_removal_mode 0)'})
-  (polygon (pts ${pts.join(' ')}))
-)`;
-}
-
-/** One .kicad_mod per used package, at the origin (top side). */
-function exportFootprintLibrary(B, proj) {
-  const L = makeLayerMapper(B);
-  const files = [];
-  const done = new Set();
-  const all = [];
-  for (const el of B.elements) if (el.pkg) all.push([el.lib, el.pkg]);
-  for (const [lib, pkg] of all) {
-    const name = sanitize(`${lib.name}_${pkg.name}`);
-    if (done.has(name)) continue;
-    done.add(name);
-    const el = { name: 'REF**', value: pkg.name, package: pkg.name, library: lib.name, x: 0, y: 0, rot: { angle: 0, mirror: false }, attrs: {}, attrDefs: [], pads: [], bbox: new BBox(), pkg, smashed: false };
-    const shapes = emitElement(el, pkg, { x: 0, y: 0, angle: 0, mirror: false }, B.dr);
-    files.push({ name: `${proj}.pretty/${name}.kicad_mod`, data: footprintFor(el, shapes, L, new Map(), name, { library: true, version: true })+ '\n' });
-  }
-  return files;
-}
-
-return { PCB_VERSION, makeLayerMapper, exportBoard, exportFootprintLibrary };
-})();
-
 __mods["js/kicad/project.js"] = (() => {
 // Bundles a full KiCad project from loaded EAGLE/Fusion documents.
 const { exportSchematic } = __mods["js/kicad/sch.js"];
@@ -3127,7 +3231,7 @@ const stripHtml = (s) => String(s || '').replace(/<br\s*\/?>/gi, '\n').replace(/
 const state = {
   sch: null, brd: null, mode: null, sheet: 0, fileName: '',
   visible: { sch: new Map(), brd: new Map() },
-  flip: false, highContrast: false, activeLayer: 1,
+  flip: false, highContrast: false, activeLayer: 'F.Cu',
   selection: null, // {type:'comp'|'net', name, pad?}
   list: 'parts', filter: '',
   units: 'mm', origin: [0, 0], cursor: [0, 0],
@@ -3152,12 +3256,13 @@ async function openFiles(files) {
       return;
     }
     const t0 = performance.now();
-    // keep the other document if only one kind was opened and names match loosely
-    const sch = schDoc ? buildSchematic(schDoc) : (brdDoc && state.sch && sameStem(state.sch.name, brdDoc.name) ? state.sch : null);
-    const brd = brdDoc ? buildBoard(brdDoc) : (schDoc && state.brd && sameStem(state.brd.name, schDoc.name) ? state.brd : null);
+    // opening only a schematic keeps the loaded board (and vice versa), so both can be added one at a time
+    const sch = schDoc ? buildSchematic(schDoc) : state.sch;
+    const brd = brdDoc ? buildBoard(brdDoc) : state.brd;
     state.sch = sch; state.brd = brd;
-    state.selection = null; state.sheet = 0; state.flip = false;
-    state.visible = { sch: new Map(), brd: new Map() };
+    state.selection = null;
+    if (schDoc) { state.sheet = 0; state.visible.sch = new Map(); }
+    if (brdDoc) { state.flip = false; state.visible.brd = new Map(); state.activeLayer = 'F.Cu'; }
     state.fileName = [sch?.name, brd?.name].filter(Boolean).map((n) => n.split('/').pop()).join(' + ');
     document.title = `${projectName((sch || brd).name)} — Fusion PCB Viewer`;
     $('#welcome').classList.add('hidden');
@@ -3172,8 +3277,6 @@ async function openFiles(files) {
     toast(`Failed to open: ${e.message}`, true);
   }
 }
-const stem = (n) => String(n || '').split('/').pop().replace(/\.[^.]+$/, '').toLowerCase();
-const sameStem = (a, b) => stem(a) === stem(b);
 
 // ------------------------------------------------------------------ modes & scenes
 function setMode(mode, fit = false) {
@@ -3385,17 +3488,17 @@ function renderLayers() {
   q('All', () => setAll(() => true), 'Show all layers');
   q('None', () => setAll(() => false), 'Hide all layers');
   if (state.mode === 'brd') {
-    const front = new Set([1, 17, 18, 20, 21, 25, 27, 29, 31, 46, 51]);
-    const back = new Set([16, 17, 18, 20, 22, 26, 28, 30, 32, 46, 52]);
-    q('Top', () => setAll((L) => front.has(L.key)), 'Show only front-side layers');
-    q('Bottom', () => setAll((L) => back.has(L.key)), 'Show only back-side layers');
+    const common = (k) => ['Pads', 'Vias', 'Edge.Cuts', 'Ratsnest'].includes(k);
+    const keep = (L, side) => (L.key.startsWith(side) && !/\.(Mask|Paste|Adhesive|Courtyard)$/.test(L.key)) || common(L.key);
+    q('Front', () => setAll((L) => keep(L, 'F.')), 'Show only front-side layers');
+    q('Back', () => setAll((L) => keep(L, 'B.')), 'Show only back-side layers');
   }
-  // list in "front first" order like KiCad's appearance panel
-  const layers = [...scene.layers].sort((a, b) => b.order - a.order);
+  // same order as KiCad's Appearance panel
+  const layers = [...scene.layers].sort((a, b) => a.panel - b.panel);
   for (const L of layers) {
     const row = document.createElement('div');
     row.className = 'layer' + (L.visible ? '' : ' off') + (state.mode === 'brd' && L.key === state.activeLayer ? ' active' : '');
-    const label = state.mode === 'brd' ? `${esc(L.name)}<small>${typeof L.key === 'number' ? L.key : ''}</small>` : esc(L.name);
+    const label = esc(L.name);
     row.innerHTML = `<input type="checkbox" ${L.visible ? 'checked' : ''} title="Show/hide"><span class="sw" style="background:${L.color};opacity:${L.alpha ?? 1}"></span><span class="nm">${label}</span>`;
     const cb = row.querySelector('input');
     cb.onclick = (e) => { e.stopPropagation(); vis.set(L.key, cb.checked); rebuildScene(); renderLayers(); };
@@ -3403,7 +3506,8 @@ function renderLayers() {
       if (state.mode === 'brd') { state.activeLayer = L.key; vis.set(L.key, true); rebuildScene(); renderLayers(); }
       else { vis.set(L.key, !L.visible); rebuildScene(); renderLayers(); }
     };
-    row.title = state.mode === 'brd' ? 'Click to make active (drawn on top); checkbox toggles visibility' : 'Click to toggle visibility';
+    const src = L.sources?.length ? `EAGLE layers: ${L.sources.join(', ')}\n` : '';
+    row.title = state.mode === 'brd' ? `${src}Click to make active (drawn on top); checkbox toggles visibility` : 'Click to toggle visibility';
     el.appendChild(row);
   }
 }
