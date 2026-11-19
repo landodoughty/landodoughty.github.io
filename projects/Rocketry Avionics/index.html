@@ -8,6 +8,7 @@
     <meta name="author" content="Landon Doughty">
 
     <title>Rocketry Avionics - Landon Doughty</title>
+    
 
     <link href="../../css/bootstrap.css" rel="stylesheet">
     <link href="../../css/portfolio-item.css" rel="stylesheet">
@@ -17,6 +18,8 @@
       .writeup pre { font-size: 12px; background-color: #f8f8f8; }
       .writeup .table { font-size: 14px; }
       .spec-table td:first-child { font-weight: bold; white-space: nowrap; }
+      .writeup h3 { margin-top: 35px; }
+      .writeup pre { white-space: pre-wrap; }
     </style>
   </head>
 
@@ -94,17 +97,17 @@
 
         <div class="col-md-4">
           <h3>Project Summary</h3>
-          <p>Custom avionics for amateur rocketry: RP2350-based flight computers with sensing, data logging, LoRa telemetry, servo and motor control, and pyrotechnic ignition, plus a ground station to track and command them.</p>
+          <p>Custom avionics for amateur rocketry: RP2350-based flight computers with sensing, navigation, data logging, fin-tab control, LoRa telemetry and pyrotechnic ignition, plus the simulation and analysis tools to tune them from real flight data.</p>
           <h3>Project Details</h3>
           <ul>
             <li>Two flight computers: the Rice ECLIPSE AFS board and my own M.I.A. (Mission Independent Avionics).</li>
             <li>RP2350B microcontroller with 16 MB QSPI flash and microSD logging.</li>
             <li>Sensors: 6-axis IMU, &plusmn;64 g accelerometer, magnetometer, barometer, temperature and power monitoring.</li>
-            <li>USB-C or XT30 battery input with automatic power-path switching.</li>
-            <li>8 buffered PWM outputs for servos and motor control.</li>
-            <li>M.I.A. adds 4 ignition channels with continuity sensing and u-blox GPS.</li>
-            <li>915 MHz LoRa telemetry with a desktop ground station.</li>
-            <li>Pico SDK C++ sensor drivers with automated bench tests.</li>
+            <li>FreeRTOS on both cores: navigation on core 0, SD logging on core 1.</li>
+            <li>15-state error-state EKF fusing IMU, barometer and magnetometer at full sensor rate (6.4 kHz).</li>
+            <li>Automatic flight state machine and an in-flight fin-tab roll test.</li>
+            <li>Simulink 6DOF model, a flight-replay simulator and a flight data viewer.</li>
+            <li>M.I.A. adds 4 ignition channels, u-blox GPS and 915 MHz LoRa telemetry.</li>
           </ul>
           <h3>Links</h3>
           <div class="row text-center">
@@ -147,7 +150,8 @@
           </tbody>
         </table>
         <h4>ECLIPSE AFS</h4>
-          <p>AFS is the flight computer for Rice ECLIPSE, the university's rocketry team. In the first version, team members each designed and tested one sensor circuit on its own (IMU, barometer, magnetometer, accelerometer, temperature and power sensing, plus the TPS2121 power path), then merged them into one main board. I led Version 2, a 50.8 &times; 87 mm 4-layer board that combines everything into one layout. It adds test points, LCSC part numbers and Gerbers ready for manufacturing. I also wrote the Pico SDK sensor drivers the team now uses.</p>
+          <p>AFS is the flight computer for Rice ECLIPSE, the university's rocketry team. In the first version, team members each designed and tested one sensor circuit on its own (IMU, barometer, magnetometer, accelerometer, temperature and power sensing, plus the TPS2121 power path), then merged them into one main board. I led Version 2, a 50.8 &times; 87 mm 4-layer board that combines everything into one layout. It adds test points, LCSC part numbers and Gerbers ready for manufacturing.</p>
+          <p>The AFS rocket has servo-driven tabs on its four fins (PWM1&ndash;4), so the board doesn't just record the flight: it knows its own attitude and can steer roll, pitch and yaw. I wrote the AFS flight software, described below, from the sensor drivers up to navigation, flight-state logic and the tools used to analyze flights.</p>
         <h4>M.I.A. (Mission Independent Avionics)</h4>
           <p>M.I.A. starts from the same core and adds everything needed to run a flight without other electronics:</p>
           <ul>
@@ -157,24 +161,101 @@
             <li><b>Status:</b> WS2812B RGB LEDs and indicator LEDs.</li>
             <li><b>Layout:</b> first routed on 6 layers, then converted to 4 layers, with impedance-controlled traces.</li>
           </ul>
-        <h4>Firmware</h4>
-          <p>The firmware uses the Pico SDK in C++. I wrote a self-contained driver library for each sensor, and all of them share the same pattern: a constructor that stores pins and settings, <code>begin()</code> to reset the chip and check its ID, setters that work at any time, and reads that return an error on bus failure. Each SPI driver sets its own baud rate and mode on every transaction, so sensors with different speed limits can share a bus with the SD card. The I2C drivers use timeouts, so a missing device can't hang the bus.</p>
-          <p>Every driver comes with a bench test that runs at boot. It checks that the chip responds and that settings read back correctly. It also checks that readings are physically plausible (about 1 g at rest, Earth's magnetic field, room temperature and pressure), and exercises the data-ready and interrupt pins, FIFOs, and continuous and non-blocking modes. At the end it prints a pass/fail summary table.</p>
+        <h3>Flight Software</h3>
+        <h4>Architecture</h4>
+          <p>The AFS firmware is C++ on the Pico SDK, running FreeRTOS (V11, SMP) across both RP2350 cores. Work is split by timing: everything that has to keep up with the sensors runs on core 0, and everything that can stall runs on core 1. An SD card write can occasionally take 250 ms, so the logger lives on core 1 where it can never delay a sensor sample. The two cores talk through a fixed-size queue that never blocks the sender; if the logger falls behind, rows are counted as dropped instead of slowing navigation. Every tunable value (thresholds, hold times, rates, board geometry, task layout) lives in one <code>config.h</code>.</p>
           <table class="table table-condensed table-striped spec-table">
             <tbody>
-              <tr><td>ICM45686</td><td>6-axis IMU &middot; SPI &middot; g, deg/s, &deg;C</td></tr>
-              <tr><td>KX134</td><td>&plusmn;64 g accelerometer &middot; SPI &middot; g</td></tr>
-              <tr><td>MMC5983MA</td><td>Magnetometer &middot; SPI &middot; Gauss, &deg;C</td></tr>
-              <tr><td>MS5611</td><td>Barometer &middot; SPI &middot; mbar, &deg;C, m</td></tr>
-              <tr><td>TMP117</td><td>Temperature &middot; I2C &middot; &deg;C</td></tr>
-              <tr><td>INA219</td><td>Current/power monitor &middot; I2C &middot; V, mA, mW</td></tr>
+              <tr><td>Nav task (core 0)</td><td>Reads every sensor as soon as it has new data, runs the EKF, the flight state machine and the roll test, and builds a log row.</td></tr>
+              <tr><td>Logger task (core 1)</td><td>Writes rows to <code>flights/nav_NNN.csv</code> on the SD card and prints a status line over serial.</td></tr>
+              <tr><td>Servo task</td><td>Drives the 8 PWM outputs: startup sweep, centering, holding and releasing the fin tabs.</td></tr>
+              <tr><td>Boot task</td><td>Runs the self-tests and startup sequence, then becomes the logger.</td></tr>
             </tbody>
           </table>
-        <h4>Telemetry and Ground Station</h4>
+          <p>At power-on the board goes through a fixed sequence:</p>
+          <ol>
+            <li><b>Self-test:</b> every sensor, the SD card, the RTOS and the EKF run their bench tests. The green LED turns on only if all of them pass.</li>
+            <li><b>Servo sweep:</b> each fin tab sweeps &plusmn;10&deg; so the crew can see it move.</li>
+            <li><b>Alignment (5 s):</b> the rocket must sit still. Sensors are averaged for 0.5 s to set the starting attitude, then the EKF learns the gyro biases. The KX134 is checked against the ICM45686 here.</li>
+            <li><b>Pad:</b> waits for launch. The blue LED shows the rocket is within 10&deg; of vertical.</li>
+            <li><b>Flight:</b> the state machine takes over (below).</li>
+          </ol>
+
+        <h4>Sensor Drivers and Bench Tests</h4>
+          <p>I wrote a self-contained driver library for each sensor, all sharing one pattern: a constructor that stores pins and settings, <code>begin()</code> to reset the chip and check its ID, setters that work at any time, and reads that return an error on bus failure. Each SPI driver sets its own baud rate and mode on every transaction, so sensors with different speed limits share a bus with the SD card. The I2C drivers use 5 ms timeouts, so a missing device can't hang the bus.</p>
+          <p>Every driver has a bench test that runs at boot. It checks that the chip responds and that settings read back correctly, that readings are physically plausible (about 1 g at rest, Earth's magnetic field, room temperature and pressure), and exercises the data-ready and interrupt pins, FIFOs, and continuous and non-blocking modes. The FreeRTOS test checks core pinning, timing, cross-core queues and mutex contention (40,000 increments from both cores, none lost).</p>
+          <table class="table table-condensed table-striped spec-table">
+            <tbody>
+              <tr><td>ICM45686</td><td>6-axis IMU &middot; SPI &middot; 6.4 kHz &middot; g, deg/s, &deg;C</td></tr>
+              <tr><td>KX134</td><td>&plusmn;64 g accelerometer &middot; SPI &middot; up to 25.6 kHz &middot; g</td></tr>
+              <tr><td>MMC5983MA</td><td>Magnetometer &middot; SPI &middot; 1 kHz &middot; Gauss, &deg;C</td></tr>
+              <tr><td>MS5611</td><td>Barometer &middot; SPI &middot; ~1 kHz &middot; mbar, &deg;C, m</td></tr>
+              <tr><td>TMP117</td><td>Temperature &middot; I2C &middot; 64 Hz &middot; &deg;C</td></tr>
+              <tr><td>INA219</td><td>Current/power monitor &middot; I2C &middot; V, mA, mW</td></tr>
+              <tr><td>SDCard</td><td>microSD with FatFs (FAT/exFAT) and a CSV row writer</td></tr>
+            </tbody>
+          </table>
+
+        <h4>Navigation: Asynchronous Extended Kalman Filter</h4>
+          <p>The core of the software is <code>NavEKF</code>, a 15-state error-state Kalman filter that estimates the rocket's orientation, position relative to the pad, velocity, and the accelerometer and gyro biases. It is plain C++17 with no heap allocation and no Pico SDK dependency, so the exact same code runs on the board, in the bench test and in the PC simulator.</p>
+          <p>The sensors all run at different rates (IMU 6.4 kHz, barometer ~1 kHz, magnetometer 1 kHz) and their readings don't arrive in a fixed order. Instead of resampling everything onto one clock, the filter state carries its own timestamp and each sensor is fused the moment its data arrives. A reading that shows up late is compared against what the sensor <i>should</i> have seen at its own timestamp (altitude <code>h&nbsp;&minus;&nbsp;v&middot;lag</code>, attitude rotated back by <code>&omega;&middot;lag</code>).</p>
+          <ul>
+            <li><b>Strapdown integration at full IMU rate.</b> Position, velocity and the attitude quaternion are integrated on every 6.4 kHz sample. The 15&times;15 covariance is propagated every 5 ms from accumulated delta-velocity and delta-angle, which keeps the filter at about 300 flops per sample.</li>
+            <li><b>Error-state formulation.</b> The filter estimates small errors and folds them back into the nominal state after every update, so attitude is always a proper unit quaternion with no gimbal-lock singularities.</li>
+            <li><b>Pad alignment.</b> Gravity gives tilt and the magnetometer gives heading. While the rocket is still, zero-velocity and zero-rotation updates learn the gyro biases to about 0.003&deg;/s.</li>
+            <li><b>Barometer corrects vertical states only.</b> Letting it correct attitude made attitude error 6&times; worse in simulation, because the filter "explained" vertical errors by tilting.</li>
+            <li><b>Soft outlier gates.</b> Outliers are fused at reduced weight (Huber-style) instead of thrown away. With hard gates, a confident filter rejected every barometer reading after burnout, ran on the IMU alone for 37 s, then jumped 200 m back in one step.</li>
+            <li><b>High-g switch.</b> Above 15 g, the ICM45686 accelerometer (&plusmn;16 g) is replaced by the KX134 until the load drops below 13 g. The gyro always comes from the ICM45686.</li>
+            <li><b>Magnetometer and transonic guards.</b> Magnetometer readings whose field strength changes by more than 30% (motor casing, pyro currents) are de-weighted, and the barometer is locked out between Mach 0.9 and 1.1, where shock waves corrupt it.</li>
+          </ul>
+          <p>The EKF bench test flies a simulated 45 s flight (3 s, 10 g boost to 1746 m, drogue descent) with biased, noisy, jittered sensors, rolling at 0.5 rev/s off an 85&deg; rail:</p>
+          <table class="table table-condensed table-striped spec-table">
+            <tbody>
+              <tr><td>Attitude error</td><td>0.51&ndash;0.60&deg; RMS over the whole flight</td></tr>
+              <tr><td>Altitude error</td><td>0.10 m RMS; apogee found within 20 ms</td></tr>
+              <tr><td>Pad alignment</td><td>~0.4&deg; tilt, 0.24&ndash;0.38&deg; heading</td></tr>
+              <tr><td>Horizontal drift</td><td>65&ndash;94 m with no GPS, inside the filter's own 3&sigma; estimate</td></tr>
+            </tbody>
+          </table>
+
+        <h4>Flight State Machine</h4>
+          <pre>LAUNCHPAD --launch--> POWERED_ASCENT --burnout--> CRUISING --apogee--> DESCENT --touchdown--> LANDED</pre>
+          <p>The checks run on every IMU sample after alignment. States only move forward, and every condition must hold continuously for a set time, so one noisy sample can't trigger a transition. Each event also has a backup path in case the main detector misses it.</p>
+          <table class="table table-condensed table-striped spec-table">
+            <tbody>
+              <tr><td>Launch</td><td>Acceleration &gt; 3 g for 50 ms, or altitude &gt; 30 m while climbing &gt; 15 m/s (slow-starting motor)</td></tr>
+              <tr><td>Burnout</td><td>At least 300 ms after launch, acceleration along the nose &lt; 0.5 g for 100 ms</td></tr>
+              <tr><td>Apogee</td><td>At least 1 s after burnout, EKF climb rate &lt; 0 for 300 ms, or 10 m below peak altitude</td></tr>
+              <tr><td>Landed</td><td>Still (|v| &lt; 1 m/s, 1 g &plusmn; 0.2 g, &lt; 20&deg;/s) for 3 s, or a &gt; 4 g impact at least 20 s after apogee</td></tr>
+            </tbody>
+          </table>
+          <p>Each transition drives the hardware: at launch the EKF switches to flight noise, the fin tabs are held at center and logging jumps from 10 Hz to 300 Hz; after landing, the servos are released and logging drops back to 10 Hz. A serial <code>state</code> command steps through the states for bench testing.</p>
+
+        <h4>In-Flight Roll Test</h4>
+          <p>To learn how much control authority the fin tabs actually have, the software runs a system-identification experiment during the coast. All four tabs move together in <b>doublets</b>: +A for 0.3 s, &minus;A for 0.3 s, then center for 0.4 s, repeating each second while A steps through 5&deg;, 10&deg; and 15&deg;. The test stops when the climb rate drops below 15 m/s, after 6.5 s, or at apogee, and aborts for good if the roll rate exceeds 360&deg;/s. Fitting <code>roll_accel = L<sub>&delta;</sub>&middot;tab + L<sub>p</sub>&middot;roll_rate + L<sub>0</sub></code> to each doublet gives tab effectiveness, roll damping and built-in roll bias, and plotting L<sub>&delta;</sub> against dynamic pressure should give a straight line. Those numbers feed the gains of the active controller.</p>
+
+        <h4>Logging</h4>
+          <p>Each row of the navigation log has 55 columns: flight state, attitude (quaternion and roll/pitch/yaw/tilt), position and velocity, Mach and dynamic pressure, tab commands, the filter's 1&sigma; uncertainties, its bias estimates, and diagnostics such as EKF CPU load, longest EKF step and dropped rows. Rates and accelerations are averaged over every IMU sample since the previous row, so nothing between rows is lost even at 10 Hz. An extra row is written at every state change.</p>
+
+        <h4>Simulation and Analysis Tools</h4>
+          <ul>
+            <li><b>FinTabSim (MATLAB/Simulink):</b> a 6DOF model of the fin-tab rocket with thrust curve, variable mass and inertia, Mach-dependent drag, per-fin aerodynamics with Barrowman normal-force slopes, servo slew limits, wind and gusts. The vehicle is read straight from the team's OpenRocket file. With tabs locked it reaches 416 m at 8.60 s against OpenRocket's 415 m at 8.60 s. With the 100 Hz roll/pitch/yaw PID controller active, tilt at apogee drops from 21&deg; to 8&deg;.</li>
+            <li><b>Flight replay simulator:</b> compiles the firmware's own EKF, state machine and roll test on a PC and runs a recorded flight log back through them with different settings, in 1 ms steps. It prints the board's state changes next to the simulated ones, so a threshold or filter change can be checked against real flight data before it is flashed. A small GUI picks the log, edits settings and opens the result.</li>
+            <li><b>Flight data viewer (Python/pyqtgraph):</b> opens SD logs with standard graphs and flight-state shading, jumps to launch, burnout, apogee or landing, and aligns several flights on any event for side-by-side comparison. It includes derived signals, A/B cursor measurements, FFT/PSD and spectrograms, zero-phase filters, ground tracks and a table comparing apogee, burn time, max speed and Mach across flights.</li>
+          </ul>
+
+        <h4>First Flight and What Changed</h4>
+          <p>The first AFS flight in November 2026 reached about 300 m by barometer, with a 58 g landing impact recorded on the KX134. The barometer and raw sensors captured the whole flight, but the EKF's attitude drifted while the rocket waited on the pad. That corrupted its altitude and velocity estimates, and the state machine went to DESCENT 0.3 s after launch, so the roll test never ran. Running the log through the replay simulator showed the cause, and I made three fixes:</p>
+          <ul>
+            <li><b>Pad hold with attitude:</b> while the rocket is still on the pad, the EKF is told 100 times a second that it isn't moving and which way the nose points (the rail angle), with roll left free. The altitude zero follows weather pressure changes with a 20 s time constant.</li>
+            <li><b>Leveling after apogee:</b> whenever the IMU is still, the averaged accelerometer direction is fed in as "up", which corrects tilt so gravity can't leak into horizontal velocity.</li>
+            <li><b>Horizontal velocity prior:</b> once a second, a weak "horizontal velocity is about 0" update (&plusmn;10 m/s under the parachute, &plusmn;1 m/s after landing) keeps position bounded without GPS.</li>
+          </ul>
+        <h4>M.I.A. Telemetry and Ground Station</h4>
           <p>M.I.A. sends telemetry over a 915 MHz LoRa link (RFM95). The flight software runs a state machine: <i>Idle &rarr; Armed &rarr; Powered Ascent &rarr; Coasting &rarr; Descent &rarr; Recovery</i>. On the pad, the link is two-way: the rocket sends at 1 Hz and listens for commands. Once it launches, the radio switches to transmit-only and sends packets as fast as it can. Each packet carries position, velocity, acceleration, pitch/roll/yaw, altitude, temperature and the current flight state.</p>
           <p>A Pico-based ground station receives the packets and logs them to an SD card. A desktop app built with Dear PyGui shows the data live, along with link RSSI and SNR. It also has ARM/DISARM controls, and its LAUNCH/RESET buttons are interlocked so they only work in the correct radio mode.</p>
         <h4>Status</h4>
-          <p>The ECLIPSE AFS V2 board is ready for manufacturing, and its sensor drivers and bench tests are merged into the team firmware. The M.I.A. PCB is finished, and its firmware is moving from Arduino to the Pico SDK so it can share the same driver libraries.</p>
+          <p>The ECLIPSE AFS board has flown, and its flight software now has pad hold, post-apogee leveling and the replay simulator to verify changes against real data before the next flight, where the roll test will measure fin-tab authority for the active controller. The M.I.A. PCB is finished, and its firmware is moving from Arduino to the Pico SDK so it can share the AFS drivers, EKF and RTOS layer.</p>
         </div>
       </div>
 
@@ -214,7 +295,7 @@
         <div class="row">
           <div class="col-lg-12">
             <p>Copyright &copy; Landon Doughty <span id="getCurrentDate"></span>
-            <br> Published September 2, 2026 &middot; Updated November 4, 2026 </p>
+            <br> Published September 2, 2026 &middot; Updated November 18, 2026 </p>
           </div>
         </div>
       </footer>
